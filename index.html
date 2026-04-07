@@ -55,7 +55,7 @@
     <div id="reflection"></div>
 
     <script>
-        const supabase = window.supabase.createClient(
+        const supabaseClient = window.supabase.createClient(
             'https://ncecqssxcmmbkbnokjqd.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWNxc3N4Y21tYmtibm9ranFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjkwMjgsImV4cCI6MjA5MTEwNTAyOH0.PitKp7H_oG8hXbbhdTT7OjLAzJ1JWv3N_ZSRbM84Xa4'
         )
@@ -66,7 +66,7 @@
 
             document.getElementById('reflection').innerText = 'Saving...';
 
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('entries')
                 .insert([{ entry: entry }]);
 
