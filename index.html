@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mirror</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: Georgia, serif;
@@ -54,10 +55,26 @@
     <div id="reflection"></div>
 
     <script>
-        function submitEntry() {
+        const supabase = window.supabase.createClient(
+            'https://ncecqssxcmmbkbnokjqd.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWNxc3N4Y21tYmtibm9ranFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjkwMjgsImV4cCI6MjA5MTEwNTAyOH0.PitKp7H_oG8hXbbhdTT7OjLAzJ1JWv3N_ZSRbM84Xa4'
+        )
+
+        async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
-            document.getElementById('reflection').innerText = 'Entry received.';
+
+            document.getElementById('reflection').innerText = 'Saving...';
+
+            const { data, error } = await supabase
+                .from('entries')
+                .insert([{ entry: entry }]);
+
+            if (error) {
+                document.getElementById('reflection').innerText = 'Error: ' + error.message;
+            } else {
+                document.getElementById('reflection').innerText = 'Entry saved.';
+            }
         }
     </script>
 </body>
