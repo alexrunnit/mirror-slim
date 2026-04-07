@@ -20,6 +20,16 @@
             margin-bottom: 40px;
             color: #555;
         }
+        input[type="email"] {
+            width: 100%;
+            padding: 12px 16px;
+            font-family: Georgia, serif;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            background: #fff;
+            box-sizing: border-box;
+            margin-bottom: 12px;
+        }
         textarea {
             width: 100%;
             height: 300px;
@@ -46,13 +56,28 @@
             line-height: 1.8;
             color: #444;
         }
+        #status {
+            margin-top: 16px;
+            color: #666;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
     <h1>Mirror</h1>
-    <textarea id="entry" placeholder="Write here..."></textarea>
-    <button onclick="submitEntry()">Submit</button>
-    <div id="reflection"></div>
+
+    <div id="login-screen">
+        <p style="color:#666; margin-bottom:24px;">Enter your email to sign in.</p>
+        <input type="email" id="email" placeholder="your@email.com" />
+        <button onclick="sendMagicLink()">Send Magic Link</button>
+        <div id="status"></div>
+    </div>
+
+    <div id="writing-screen" style="display:none;">
+        <textarea id="entry" placeholder="Write here..."></textarea>
+        <button onclick="submitEntry()">Submit</button>
+        <div id="reflection"></div>
+    </div>
 
     <script>
         const supabaseClient = window.supabase.createClient(
@@ -60,15 +85,56 @@
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWNxc3N4Y21tYmtibm9ranFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjkwMjgsImV4cCI6MjA5MTEwNTAyOH0.PitKp7H_oG8hXbbhdTT7OjLAzJ1JWv3N_ZSRbM84Xa4'
         )
 
+        // Check if user is already logged in
+        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                showWritingScreen();
+            }
+        });
+
+        // Listen for auth state changes (handles magic link redirect)
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                showWritingScreen();
+            }
+        });
+
+        function showWritingScreen() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('writing-screen').style.display = 'block';
+        }
+
+        async function sendMagicLink() {
+            const email = document.getElementById('email').value;
+            if (!email.trim()) return;
+
+            document.getElementById('status').innerText = 'Sending...';
+
+            const { error } = await supabaseClient.auth.signInWithOtp({
+                email: email,
+                options: {
+                    emailRedirectTo: 'https://mirror-slim.vercel.app'
+                }
+            });
+
+            if (error) {
+                document.getElementById('status').innerText = 'Error: ' + error.message;
+            } else {
+                document.getElementById('status').innerText = 'Check your email for a magic link.';
+            }
+        }
+
         async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
 
             document.getElementById('reflection').innerText = 'Saving...';
 
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
             const { data, error } = await supabaseClient
                 .from('entries')
-                .insert([{ entry: entry }]);
+                .insert([{ entry: entry, user_id: user.id }]);
 
             if (error) {
                 document.getElementById('reflection').innerText = 'Error: ' + error.message;
