@@ -122,9 +122,7 @@
             } else {
                 document.getElementById('status').innerText = 'Check your email for a magic link.';
             }
-        }
-
-        async function submitEntry() {
+ async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
 
@@ -132,16 +130,30 @@
 
             const { data: { user } } = await supabaseClient.auth.getUser();
 
-            const { data, error } = await supabaseClient
+            // Send entry to Vercel function
+            const response = await fetch('/api/reflect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ entry: entry })
+            });
+
+            const { reflection } = await response.json();
+
+            // Save entry and reflection to Supabase
+            const { error } = await supabaseClient
                 .from('entries')
-                .insert([{ entry: entry, user_id: user.id }]);
+                .insert([{ 
+                    entry: entry, 
+                    reflection: reflection,
+                    user_id: user.id 
+                }]);
 
             if (error) {
                 document.getElementById('reflection').innerText = 'Error: ' + error.message;
             } else {
-                document.getElementById('reflection').innerText = 'Entry saved.';
+                document.getElementById('reflection').innerText = reflection;
             }
-        }
+        }      
     </script>
 </body>
 </html>
