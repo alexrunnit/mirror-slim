@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     if (!entry) {
         return res.status(400).json({ error: 'No entry provided' });
     }
-
+x
     // Pull non-sensitive persona fields from Supabase
     const supabaseClient = createClient(
         process.env.SUPABASE_URL,
