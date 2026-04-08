@@ -97,6 +97,11 @@
             }
         });
 
+        function showWritingScreen() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('writing-screen').style.display = 'block';
+        }
+
         async function showWritingScreen() {
             const { data: { user } } = await supabaseClient.auth.getUser();
             
@@ -130,7 +135,7 @@
             }
         }
 
-  async function submitEntry() {
+        async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
 
@@ -138,7 +143,6 @@
 
             const { data: { user } } = await supabaseClient.auth.getUser();
 
-            // Pull last 5 entries for context
             const { data: recentEntries } = await supabaseClient
                 .from('entries')
                 .select('entry, reflection')
@@ -170,7 +174,7 @@
             } else {
                 document.getElementById('reflection').innerText = reflection;
             }
-        }      
+        }
     </script>
 </body>
 </html>

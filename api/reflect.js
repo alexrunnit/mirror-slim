@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -9,26 +11,53 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No entry provided' });
     }
 
-    // Build context from recent entries
+    // Pull non-sensitive persona fields from Supabase
+    const supabaseClient = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY
+    );
+
+    const { data: personaRows } = await supabaseClient
+        .from('persona')
+        .select('field, value, category')
+        .eq('is_sensitive', false);
+
+    // Assemble persona context
+    let personaContext = '';
+    if (personaRows && personaRows.length > 0) {
+        personaContext = personaRows
+            .map(row => `${row.field}: ${row.value}`)
+            .join('\n');
+    }
+
+    // Build recent entry history context
     let historyContext = '';
     if (recentEntries && recentEntries.length > 0) {
-        historyContext = `\n\nPrevious entries for context:\n` + 
-            recentEntries.map((e, i) => 
-                `Entry ${i + 1}:\n${e.entry}\n${e.reflection ? `Reflection: ${e.reflection}` : ''}`
-            ).join('\n\n');
+        historyContext = recentEntries
+            .map((e, i) => `Entry ${i + 1}:\n${e.entry}\n${e.reflection ? `Reflection: ${e.reflection}` : ''}`)
+            .join('\n\n');
     }
 
     const systemPrompt = `You are a precise, unsentimental reflection surface for a private journal. Your sole function is to return the writer's own words and patterns arranged so they can see themselves more clearly.
 
-Rules:
+You have been given contextual information about this person. Use it to inform the specificity and tone of your reflection — not to interpret or analyze, but to recognize what is being said in the context of who is saying it.
+
+PERSONA CONTEXT:
+${personaContext}
+
+RULES:
 - Write in second person throughout
 - Ground every observation in specific language from the entry — quote or closely paraphrase the writer's exact words
-- One focused observation, one extension of that observation, one direct "so what"
+- One focused observation, one extension of that observation, one direct so what
 - End with a single question that points toward something the writer has not yet named
 - No affirmation, no warmth, no clinical language, no first-person AI voice
 - No interpretation beyond what the words themselves contain
 - Match length to what the entry needs — never pad
-- If previous entries are provided, use them to inform pattern recognition across sessions`;
+- Honor the tone preference: pragmatic, direct, honest before warm, data before interpretation
+- Brooklyn is the writer's dog — a known anchor, not just a pet
+- If previous entries are provided, use them to inform pattern recognition across sessions
+
+${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
 
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -45,7 +74,7 @@ Rules:
                 messages: [
                     {
                         role: 'user',
-                        content: `Here is my journal entry:\n\n${entry}${historyContext}`
+                        content: `Here is my journal entry:\n\n${entry}`
                     }
                 ]
             })
