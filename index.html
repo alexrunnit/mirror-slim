@@ -122,18 +122,29 @@
             }
         }
 
-        async function submitEntry() {
+  async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
 
-            document.getElementById('reflection').innerText = 'Saving...';
+            document.getElementById('reflection').innerText = 'Reflecting...';
 
             const { data: { user } } = await supabaseClient.auth.getUser();
+
+            // Pull last 5 entries for context
+            const { data: recentEntries } = await supabaseClient
+                .from('entries')
+                .select('entry, reflection')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
 
             const response = await fetch('/api/reflect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entry: entry })
+                body: JSON.stringify({ 
+                    entry: entry,
+                    recentEntries: recentEntries || []
+                })
             });
 
             const { reflection } = await response.json();
@@ -151,7 +162,7 @@
             } else {
                 document.getElementById('reflection').innerText = reflection;
             }
-        }
+        }      
     </script>
 </body>
 </html>
