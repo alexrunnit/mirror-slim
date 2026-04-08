@@ -97,7 +97,15 @@
             }
         });
 
-        function showWritingScreen() {
+        async function showWritingScreen() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            
+            if (user.email !== 'kamshoshy@gmail.com') {
+                document.getElementById('login-screen').innerHTML = '<p style="color:#888;">Access denied.</p>';
+                await supabaseClient.auth.signOut();
+                return;
+            }
+
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('writing-screen').style.display = 'block';
         }
