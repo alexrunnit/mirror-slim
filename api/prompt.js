@@ -88,12 +88,11 @@ The question must be:
 
 Mood scale for this person specifically:
 1-3: down and struggling — ask something that acknowledges weight without amplifying it, opens rather than demands
-4-6: good stable zone — this is healthy baseline functioning for this person, not mediocrity. Ask something that deepens or extends what's working
-7-8: upbeat, above baseline — ask something that explores what's driving the uplift
+4-6: good stable zone — this is healthy baseline functioning for this person, not mediocrity. Ask something that deepens or extends what is working
+7-8: upbeat, above baseline — ask something that explores what is driving the uplift
 9-10: acutely positive, rare — ask something that captures or examines the exceptional state
 
-Honor the stable zone as a genuine achievement. A mood of 5 or 6 for this person is not neutral — it is the target.```
-
+Honor the stable zone as a genuine achievement. A mood of 5 or 6 for this person is not neutral — it is the target.
 
 This person's context:
 ${personaContext}
