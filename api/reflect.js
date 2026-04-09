@@ -119,7 +119,7 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
         }
 
         // Trigger synthesis every 10 entries
-        if (totalEntryCount && totalEntryCount % 10 === 0) {
+  if (totalEntryCount && totalEntryCount > 0 && (totalEntryCount + 1) % 10 === 0) {
             await runSynthesis(supabaseClient, recentEntries, personaContext, userId);
         }
 
@@ -187,7 +187,8 @@ ${entriesText}`;
         const synthesisText = synthesisData.content[0].text;
 
         const parts = synthesisText.split('OUTPUT 2');
-        const summaryText = parts[0].replace('OUTPUT 1 — SUMMARY:', '').trim();
+        const summaryRaw = parts[0].replace('OUTPUT 1 — SUMMARY:', '').replace('# OUTPUT 1 — SUMMARY', '').trim();
+        const summaryText = summaryRaw.replace(/#{1,6}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '').trim();
         const changesText = parts[1] ? parts[1].replace('— DETECTED CHANGES:', '').trim() : '';
 
         await supabaseClient
