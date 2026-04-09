@@ -115,7 +115,6 @@ ${historyContext ? `Recent entries:\n${historyContext}` : ''}`;
         const data = await response.json();
         const prompt = data.content[0].text.trim();
 
-        // Create a new row in entries with just the prompt
         const { data: newRow, error } = await supabaseClient
             .from('entries')
             .insert([{
@@ -126,4 +125,15 @@ ${historyContext ? `Recent entries:\n${historyContext}` : ''}`;
             .single();
 
         if (!newRow || !newRow.id) {
-            return res.sta
+            return res.status(500).json({ error: 'Row insert failed', prompt: prompt });
+        }
+
+        return res.status(200).json({ 
+            prompt: prompt,
+            rowId: newRow.id
+        });
+
+    } catch (error) {
+        return res.status(500).json({ error: 'Prompt generation failed: ' + error.message });
+    }
+}
