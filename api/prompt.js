@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { userId, recentEntries, currentMood, currentFeelings } = req.body;
+    const { userId, recentEntries, currentMood, currentFeelings, feelingsNote } = req.body;
 
     if (!userId) {
         return res.status(400).json({ error: 'No userId provided' });
@@ -53,10 +53,18 @@ module.exports = async function handler(req, res) {
     // Build current state context
     let currentStateContext = '';
     if (currentMood) {
-        currentStateContext += `Mood: ${currentMood}/10\n`;
+        let moodBand = '';
+        if (currentMood <= 3) moodBand = 'down and struggling';
+        else if (currentMood <= 6) moodBand = 'good stable zone — healthy baseline for this person';
+        else if (currentMood <= 8) moodBand = 'upbeat, above baseline';
+        else moodBand = 'acutely positive, rare and notable';
+        currentStateContext += `Mood: ${currentMood}/10 (${moodBand})\n`;
     }
     if (currentFeelings && currentFeelings.length > 0) {
         currentStateContext += `Feelings present: ${currentFeelings.join(', ')}\n`;
+    }
+    if (feelingsNote) {
+        currentStateContext += `Feelings note: ${feelingsNote}\n`;
     }
 
     // Get current hour for time of day awareness
@@ -78,9 +86,14 @@ The question must be:
 - One sentence only
 - No preamble, no explanation, no options — just the question itself
 
-If the mood is low (1-4) or difficult feelings are present: ask something that acknowledges the weight without amplifying it — something that opens rather than demands.
-If the mood is neutral (5-6): ask something that gently probes what's underneath the surface.
-If the mood is high (7-10) or expansive feelings are present: ask something that extends the forward momentum — what's possible from here.
+Mood scale for this person specifically:
+1-3: down and struggling — ask something that acknowledges weight without amplifying it, opens rather than demands
+4-6: good stable zone — this is healthy baseline functioning for this person, not mediocrity. Ask something that deepens or extends what's working
+7-8: upbeat, above baseline — ask something that explores what's driving the uplift
+9-10: acutely positive, rare — ask something that captures or examines the exceptional state
+
+Honor the stable zone as a genuine achievement. A mood of 5 or 6 for this person is not neutral — it is the target.```
+
 
 This person's context:
 ${personaContext}

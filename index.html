@@ -331,6 +331,8 @@ let currentRowId = null;
                 .order('created_at', { ascending: false })
                 .limit(5);
 
+            const feelingsNote = document.getElementById('feelings-note').value;
+
             const response = await fetch('/api/prompt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -338,7 +340,8 @@ let currentRowId = null;
                     userId: user.id,
                     recentEntries: recentEntries || [],
                     currentMood: selectedMood,
-                    currentFeelings: selectedFeelings
+                    currentFeelings: selectedFeelings,
+                    feelingsNote: feelingsNote || ''
                 })
             });
 
