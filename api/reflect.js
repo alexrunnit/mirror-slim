@@ -5,29 +5,41 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { entry, recentEntries } = req.body;
+    const { entry, recentEntries, userId, totalEntryCount } = req.body;
 
     if (!entry) {
         return res.status(400).json({ error: 'No entry provided' });
     }
 
-    // Pull non-sensitive persona fields from Supabase
     const supabaseClient = createClient(
         process.env.SUPABASE_URL,
         process.env.SUPABASE_SERVICE_KEY
     );
 
+    // Pull non-sensitive persona fields
     const { data: personaRows } = await supabaseClient
         .from('persona')
         .select('field, value, category')
         .eq('is_sensitive', false);
 
-    // Assemble persona context
     let personaContext = '';
     if (personaRows && personaRows.length > 0) {
         personaContext = personaRows
             .map(row => `${row.field}: ${row.value}`)
             .join('\n');
+    }
+
+    // Pull most recent summary
+    const { data: summaryRows } = await supabaseClient
+        .from('summaries')
+        .select('summary')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    let summaryContext = '';
+    if (summaryRows && summaryRows.length > 0) {
+        summaryContext = summaryRows[0].summary;
     }
 
     // Build recent entry history context
@@ -45,6 +57,8 @@ You have been given contextual information about this person. Use it to inform t
 PERSONA CONTEXT:
 ${personaContext}
 
+${summaryContext ? `EVOLVING PATTERN SUMMARY (recent period):\n${summaryContext}\n` : ''}
+
 RULES:
 - Write in second person throughout
 - Ground every observation in specific language from the entry — quote or closely paraphrase the writer's exact words
@@ -59,6 +73,7 @@ RULES:
 
 ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
 
+    // Main reflection call
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -83,9 +98,118 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
         const data = await response.json();
         const reflection = data.content[0].text;
 
+        // Trigger synthesis every 10 entries
+        if (totalEntryCount && totalEntryCount % 10 === 0) {
+            await runSynthesis(supabaseClient, recentEntries, personaContext, userId);
+        }
+
         return res.status(200).json({ reflection });
 
     } catch (error) {
         return res.status(500).json({ error: 'API call failed: ' + error.message });
+    }
+}
+
+async function runSynthesis(supabaseClient, recentEntries, personaContext, userId) {
+    if (!recentEntries || recentEntries.length === 0) return;
+
+    const entriesText = recentEntries
+        .map((e, i) => `Entry ${i + 1}:\n${e.entry}`)
+        .join('\n\n');
+
+    const synthesisPrompt = `You are analyzing a private journal to extract evolving patterns and detect significant changes. You will produce two outputs.
+
+OUTPUT 1 — SUMMARY:
+Write a single compressed paragraph (150 words maximum) capturing:
+- Recurring themes and their frequency
+- Tone and emotional register across this period
+- Schema patterns present or notably absent
+- Language drift — what words or framings are increasing or decreasing
+- Brooklyn's presence and function
+- Aspiration language — concrete and active versus conditional and distant
+- Overall trajectory — forward, static, or regressing
+
+OUTPUT 2 — DETECTED CHANGES:
+List any significant changes detected, each on its own line in this exact format:
+TYPE|FIELD|DETECTED_VALUE|CONFIDENCE
+Where TYPE is either EVENT or DRIFT
+Where FIELD is the persona field being updated
+Where DETECTED_VALUE is what you observed in the writing
+Where CONFIDENCE is high, medium, or low
+
+PERSONA BASELINE:
+${personaContext}
+
+JOURNAL ENTRIES TO ANALYZE:
+${entriesText}`;
+
+    try {
+        const synthesisResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 1024,
+                messages: [
+                    {
+                        role: 'user',
+                        content: synthesisPrompt
+                    }
+                ]
+            })
+        });
+
+        const synthesisData = await synthesisResponse.json();
+        const synthesisText = synthesisData.content[0].text;
+
+        // Split summary from detected changes
+        const parts = synthesisText.split('OUTPUT 2');
+        const summaryText = parts[0].replace('OUTPUT 1 — SUMMARY:', '').trim();
+        const changesText = parts[1] ? parts[1].replace('— DETECTED CHANGES:', '').trim() : '';
+
+        // Write summary to summaries table
+        await supabaseClient
+            .from('summaries')
+            .insert([{
+                summary: summaryText,
+                entry_count: recentEntries.length,
+                user_id: userId
+            }]);
+
+        // Parse and write detected changes to persona_updates
+        if (changesText) {
+            const changeLines = changesText.split('\n').filter(line => line.includes('|'));
+            for (const line of changeLines) {
+                const [type, field, detectedValue, confidence] = line.split('|');
+                if (type && field && detectedValue) {
+                    // Get current persona value for this field
+                    const { data: currentPersona } = await supabaseClient
+                        .from('persona')
+                        .select('value')
+                        .eq('field', field.trim())
+                        .single();
+
+                    await supabaseClient
+                        .from('persona_updates')
+                        .insert([{
+                            update_type: type.trim(),
+                            field: field.trim(),
+                            detected_value: detectedValue.trim(),
+                            current_value: currentPersona ? currentPersona.value : '',
+                            confidence: confidence ? confidence.trim() : 'medium',
+                            reviewed: false,
+                            accepted: false,
+                            user_id: userId
+                        }]);
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('Synthesis error:', error);
     }
 }

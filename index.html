@@ -150,12 +150,20 @@
                 .order('created_at', { ascending: false })
                 .limit(5);
 
+            // Get total entry count for synthesis trigger
+            const { count } = await supabaseClient
+                .from('entries')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
             const response = await fetch('/api/reflect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     entry: entry,
-                    recentEntries: recentEntries || []
+                    recentEntries: recentEntries || [],
+                    userId: user.id,
+                    totalEntryCount: count || 0
                 })
             });
 
