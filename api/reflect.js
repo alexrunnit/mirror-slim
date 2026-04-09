@@ -137,6 +137,44 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         .map((e, i) => `Entry ${i + 1}:\n${e.entry}`)
         .join('\n\n');
 
+  // Pull recent mood scores for synthesis
+    const { data: recentMoods } = await supabaseClient
+        .from('mood')
+        .select('score, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    // Pull recent feelings for synthesis
+    const { data: recentFeelings } = await supabaseClient
+        .from('feelings')
+        .select('feeling, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    // Compress mood data
+    let moodContext = '';
+    if (recentMoods && recentMoods.length > 0) {
+        const avgMood = (recentMoods.reduce((sum, m) => sum + m.score, 0) / recentMoods.length).toFixed(1);
+        const moodScores = recentMoods.map(m => m.score).join(', ');
+        moodContext = `Mood scores (most recent first): ${moodScores}\nAverage: ${avgMood}/10`;
+    }
+
+    // Compress feelings data
+    let feelingsContext = '';
+    if (recentFeelings && recentFeelings.length > 0) {
+        const feelingCounts = {};
+        recentFeelings.forEach(f => {
+            feelingCounts[f.feeling] = (feelingCounts[f.feeling] || 0) + 1;
+        });
+        const sorted = Object.entries(feelingCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([feeling, count]) => `${feeling} (${count})`)
+            .join(', ');
+        feelingsContext = `Feelings frequency: ${sorted}`;
+    }
+
     const synthesisPrompt = `You are analyzing a private journal to extract evolving patterns and detect significant changes. You will produce two outputs.
 
 OUTPUT 1 — SUMMARY:
@@ -148,17 +186,27 @@ Write a single compressed paragraph (150 words maximum) capturing:
 - Brooklyn's presence and function
 - Aspiration language — concrete and active versus conditional and distant
 - Overall trajectory — forward, static, or regressing
+- Mood trends if data is present — average score, direction, notable shifts
+- Feeling patterns if data is present — which feelings appear most, which cluster together
 
 OUTPUT 2 — DETECTED CHANGES:
 List any significant changes detected, each on its own line in this exact format:
 TYPE|FIELD|DETECTED_VALUE|CONFIDENCE
 Where TYPE is either EVENT or DRIFT
 Where FIELD is the persona field being updated
-Where DETECTED_VALUE is what you observed in the writing
+Where DETECTED_VALUE is what you observed in the writing or mood/feelings data
 Where CONFIDENCE is high, medium, or low
+
+Include mood and feelings trends as DRIFT updates when patterns are persistent and meaningful.
+Examples:
+DRIFT|current_momentum|Mood scores averaging 7.2 over recent sessions indicating sustained forward movement|high
+DRIFT|dominant_patterns|Restless and cautious appearing together frequently, often preceding high output entries|medium
 
 PERSONA BASELINE:
 ${personaContext}
+
+${moodContext ? `MOOD DATA:\n${moodContext}\n` : ''}
+${feelingsContext ? `FEELINGS DATA:\n${feelingsContext}\n` : ''}
 
 JOURNAL ENTRIES TO ANALYZE:
 ${entriesText}`;

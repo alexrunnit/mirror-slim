@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { userId, recentEntries } = req.body;
+    const { userId, recentEntries, currentMood, currentFeelings } = req.body;
 
     if (!userId) {
         return res.status(400).json({ error: 'No userId provided' });
@@ -50,6 +50,15 @@ module.exports = async function handler(req, res) {
             .join('\n\n');
     }
 
+    // Build current state context
+    let currentStateContext = '';
+    if (currentMood) {
+        currentStateContext += `Mood: ${currentMood}/10\n`;
+    }
+    if (currentFeelings && currentFeelings.length > 0) {
+        currentStateContext += `Feelings present: ${currentFeelings.join(', ')}\n`;
+    }
+
     // Get current hour for time of day awareness
     const hour = new Date().getHours();
     let timeOfDay = '';
@@ -61,17 +70,24 @@ module.exports = async function handler(req, res) {
     const promptSystem = `You are a writing prompt generator for a private journal. Your sole function is to produce one single question that opens thought and invites genuine reflection.
 
 The question must be:
-- Specific to this person based on their recent writing and context
+- Specific to this person based on their recent writing, current emotional state, and context
+- Calibrated to their mood and feelings if provided — meet them where they are, not where they should be
 - Pointed enough to provoke thought but open enough to allow any direction
 - Grounded in something real from their recent entries or persona — never generic
 - Appropriate for the time of day: ${timeOfDay}
 - One sentence only
 - No preamble, no explanation, no options — just the question itself
 
+If the mood is low (1-4) or difficult feelings are present: ask something that acknowledges the weight without amplifying it — something that opens rather than demands.
+If the mood is neutral (5-6): ask something that gently probes what's underneath the surface.
+If the mood is high (7-10) or expansive feelings are present: ask something that extends the forward momentum — what's possible from here.
+
 This person's context:
 ${personaContext}
 
 ${summaryContext ? `Recent pattern summary:\n${summaryContext}\n` : ''}
+
+${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}
 
 ${historyContext ? `Recent entries:\n${historyContext}` : ''}`;
 
@@ -109,20 +125,5 @@ ${historyContext ? `Recent entries:\n${historyContext}` : ''}`;
             .select('id')
             .single();
 
-        if (error) {
-            return res.status(500).json({ error: 'Failed to save prompt: ' + error.message });
-        }
-
         if (!newRow || !newRow.id) {
-            return res.status(500).json({ error: 'Row insert failed', prompt: prompt });
-        }
-
-        return res.status(200).json({ 
-            prompt: prompt,
-            rowId: newRow.id
-        });
-
-    } catch (error) {
-        return res.status(500).json({ error: 'Prompt generation failed: ' + error.message });
-    }
-}
+            return res.sta
