@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { entry, recentEntries, userId, totalEntryCount } = req.body;
+    const { entry, recentEntries, userId, totalEntryCount, rowId, promptUsed } = req.body;
 
     if (!entry) {
         return res.status(400).json({ error: 'No entry provided' });
@@ -63,7 +63,7 @@ RULES:
 - Write in second person throughout
 - Ground every observation in specific language from the entry — quote or closely paraphrase the writer's exact words
 - One focused observation, one extension of that observation, one direct so what
-- End with a single question that points toward something the writer has not yet named
+- End with a single declarative closing statement — not a question — that names what this entry reveals when read clearly
 - No affirmation, no warmth, no clinical language, no first-person AI voice
 - No interpretation beyond what the words themselves contain
 - Match length to what the entry needs — never pad
@@ -73,7 +73,6 @@ RULES:
 
 ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
 
-    // Main reflection call
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -97,6 +96,27 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
 
         const data = await response.json();
         const reflection = data.content[0].text;
+
+        // Update existing row if rowId exists, otherwise insert new row
+        if (rowId) {
+            await supabaseClient
+                .from('entries')
+                .update({
+                    entry: entry,
+                    reflection: reflection,
+                    prompt_used: promptUsed || false
+                })
+                .eq('id', rowId);
+        } else {
+            await supabaseClient
+                .from('entries')
+                .insert([{
+                    entry: entry,
+                    reflection: reflection,
+                    prompt_used: false,
+                    user_id: userId
+                }]);
+        }
 
         // Trigger synthesis every 10 entries
         if (totalEntryCount && totalEntryCount % 10 === 0) {
@@ -166,12 +186,10 @@ ${entriesText}`;
         const synthesisData = await synthesisResponse.json();
         const synthesisText = synthesisData.content[0].text;
 
-        // Split summary from detected changes
         const parts = synthesisText.split('OUTPUT 2');
         const summaryText = parts[0].replace('OUTPUT 1 — SUMMARY:', '').trim();
         const changesText = parts[1] ? parts[1].replace('— DETECTED CHANGES:', '').trim() : '';
 
-        // Write summary to summaries table
         await supabaseClient
             .from('summaries')
             .insert([{
@@ -180,13 +198,11 @@ ${entriesText}`;
                 user_id: userId
             }]);
 
-        // Parse and write detected changes to persona_updates
         if (changesText) {
             const changeLines = changesText.split('\n').filter(line => line.includes('|'));
             for (const line of changeLines) {
                 const [type, field, detectedValue, confidence] = line.split('|');
                 if (type && field && detectedValue) {
-                    // Get current persona value for this field
                     const { data: currentPersona } = await supabaseClient
                         .from('persona')
                         .select('value')

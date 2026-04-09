@@ -74,6 +74,8 @@
     </div>
 
     <div id="writing-screen" style="display:none;">
+        <button onclick="generatePrompt()" id="prompt-btn" style="background:#f5f5f0; color:#555; border: 1px solid #ddd; margin-bottom:16px;">Generate Prompt</button>
+        <div id="prompt-display" style="margin-bottom:16px; font-style:italic; color:#666; line-height:1.7;"></div>
         <textarea id="entry" placeholder="Write here..."></textarea>
         <button onclick="submitEntry()">Submit</button>
         <div id="reflection"></div>
@@ -97,10 +99,6 @@
             }
         });
 
-        function showWritingScreen() {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('writing-screen').style.display = 'block';
-        }
 
         async function showWritingScreen() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -135,6 +133,43 @@
             }
         }
 
+let currentRowId = null;
+        let promptWasUsed = false;
+
+        async function generatePrompt() {
+            document.getElementById('prompt-btn').innerText = 'Generating...';
+            document.getElementById('prompt-display').innerText = '';
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            const { data: recentEntries } = await supabaseClient
+                .from('entries')
+                .select('entry, reflection')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            const response = await fetch('/api/prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    recentEntries: recentEntries || []
+                })
+            });
+
+            const { prompt, rowId } = await response.json();
+
+            currentRowId = rowId;
+            promptWasUsed = false;
+
+            document.getElementById('prompt-display').innerText = prompt;
+            document.getElementById('prompt-btn').innerText = 'Generate Prompt';
+            document.getElementById('entry').addEventListener('input', function() {
+                promptWasUsed = true;
+            }, { once: true });
+        }
+
         async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
@@ -150,7 +185,6 @@
                 .order('created_at', { ascending: false })
                 .limit(5);
 
-            // Get total entry count for synthesis trigger
             const { count } = await supabaseClient
                 .from('entries')
                 .select('*', { count: 'exact', head: true })
@@ -159,29 +193,21 @@
             const response = await fetch('/api/reflect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     entry: entry,
                     recentEntries: recentEntries || [],
                     userId: user.id,
-                    totalEntryCount: count || 0
+                    totalEntryCount: count || 0,
+                    rowId: currentRowId,
+                    promptUsed: promptWasUsed
                 })
             });
 
             const { reflection } = await response.json();
 
-            const { error } = await supabaseClient
-                .from('entries')
-                .insert([{ 
-                    entry: entry, 
-                    reflection: reflection,
-                    user_id: user.id 
-                }]);
-
-            if (error) {
-                document.getElementById('reflection').innerText = 'Error: ' + error.message;
-            } else {
-                document.getElementById('reflection').innerText = reflection;
-            }
+            document.getElementById('reflection').innerText = reflection;
+            currentRowId = null;
+            promptWasUsed = false;
         }
     </script>
 </body>
