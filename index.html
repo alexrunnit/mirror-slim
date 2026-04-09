@@ -89,7 +89,7 @@
             <div id="feelings-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:16px;">
             </div>
             <textarea id="feelings-note" placeholder="Say more if you want to..." style="height:80px; font-size:0.9rem;"></textarea>
-            <button onclick="saveFeelings()" style="margin-top:8px; background:#f5f5f0; color:#555; border: 1px solid #ddd;">Save Feelings</button>
+            <button onclick="saveFeelings()" id="feelings-btn" style="margin-top:8px; background:#f5f5f0; color:#555; border: 1px solid #ddd;">Save Feelings</button>
             <div id="feelings-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
         </div>
 
@@ -288,8 +288,11 @@ let currentRowId = null;
                 return;
             }
 
-            document.getElementById('feelings-status').innerText = 'Saving...';
+            const btn = document.getElementById('feelings-btn');
+            if (btn.disabled) return;
+            btn.disabled = true;
 
+            document.getElementById('feelings-status').innerText = 'Saving...';
             const { data: { user } } = await supabaseClient.auth.getUser();
             const note = document.getElementById('feelings-note').value;
 
@@ -308,6 +311,7 @@ let currentRowId = null;
             } else {
                 document.getElementById('feelings-status').innerText = `${selectedFeelings.length} feeling${selectedFeelings.length > 1 ? 's' : ''} logged.`;
             }
+            btn.disabled = false;
         }
 
         // Initialize mood and feelings UI on load
