@@ -113,6 +113,10 @@ ${historyContext ? `Recent entries:\n${historyContext}` : ''}`;
             return res.status(500).json({ error: 'Failed to save prompt: ' + error.message });
         }
 
+        if (!newRow || !newRow.id) {
+            return res.status(500).json({ error: 'Row insert failed', prompt: prompt });
+        }
+
         return res.status(200).json({ 
             prompt: prompt,
             rowId: newRow.id
