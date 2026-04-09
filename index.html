@@ -162,19 +162,27 @@ let currentRowId = null;
 
         // Mood color system
         const moodColors = {
-            1: '#c0c0c0', 2: '#a8b4c0', 3: '#90a8ba',
-            4: '#789cb4', 5: '#6090ae', 6: '#4884a8',
-            7: '#3070a0', 8: '#1e5c96', 9: '#0e4880', 10: '#0a2d5a'
+            1: '#e8e8e8', 2: '#c8d4dc', 3: '#a8bfcf',
+            4: '#7ea8c4', 5: '#5490b8', 6: '#3a78aa',
+            7: '#2560a0', 8: '#1a4d8c', 9: '#0f3875', 10: '#08235e'
         };
 
-        const feelingsList = [
-            'Anxious', 'Overwhelmed', 'Sad', 'Lonely', 'Frustrated',
-            'Irritable', 'Numb', 'Fearful', 'Ashamed', 'Disconnected',
-            'Restless', 'Heavy', 'Uncertain', 'Contemplative', 'Tired',
-            'Distracted', 'Flat', 'Cautious', 'Waiting', 'Calm',
-            'Grateful', 'Hopeful', 'Curious', 'Confident', 'Energized',
-            'Proud', 'Connected', 'Peaceful', 'Inspired', 'Clear', 'Joyful'
-        ];
+        const feelingsList = {
+            difficult: [
+                'Anxious', 'Overwhelmed', 'Sad', 'Lonely', 'Frustrated',
+                'Irritable', 'Numb', 'Fearful', 'Ashamed', 'Disconnected',
+                'Restless', 'Heavy'
+            ],
+            neutral: [
+                'Uncertain', 'Contemplative', 'Tired', 'Distracted',
+                'Flat', 'Cautious', 'Waiting'
+            ],
+            expansive: [
+                'Calm', 'Grateful', 'Hopeful', 'Curious', 'Confident',
+                'Energized', 'Proud', 'Connected', 'Peaceful', 'Inspired',
+                'Clear', 'Joyful'
+            ]
+        };
 
         // Build mood buttons
         function buildMoodButtons() {
@@ -223,29 +231,54 @@ let currentRowId = null;
         // Build feelings grid
         function buildFeelingsGrid() {
             const grid = document.getElementById('feelings-grid');
-            feelingsList.forEach(feeling => {
-                const label = document.createElement('label');
-                label.style.display = 'flex';
-                label.style.alignItems = 'center';
-                label.style.gap = '6px';
-                label.style.fontSize = '0.9rem';
-                label.style.cursor = 'pointer';
-                label.style.color = '#555';
+            grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+            grid.style.alignItems = 'start';
 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.value = feeling;
-                checkbox.onchange = () => {
-                    if (checkbox.checked) {
-                        selectedFeelings.push(feeling);
-                    } else {
-                        selectedFeelings = selectedFeelings.filter(f => f !== feeling);
-                    }
-                };
+            const columns = [
+                { key: 'difficult', label: 'Challenging' },
+                { key: 'neutral', label: 'Neutral' },
+                { key: 'expansive', label: 'Expansive' }
+            ];
 
-                label.appendChild(checkbox);
-                label.appendChild(document.createTextNode(feeling));
-                grid.appendChild(label);
+            columns.forEach(col => {
+                const column = document.createElement('div');
+
+                const header = document.createElement('p');
+                header.innerText = col.label;
+                header.style.fontSize = '0.75rem';
+                header.style.color = '#aaa';
+                header.style.letterSpacing = '0.05em';
+                header.style.marginBottom = '8px';
+                header.style.marginTop = '0';
+                column.appendChild(header);
+
+                feelingsList[col.key].forEach(feeling => {
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontSize = '0.9rem';
+                    label.style.cursor = 'pointer';
+                    label.style.color = '#555';
+                    label.style.marginBottom = '6px';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = feeling;
+                    checkbox.onchange = () => {
+                        if (checkbox.checked) {
+                            selectedFeelings.push(feeling);
+                        } else {
+                            selectedFeelings = selectedFeelings.filter(f => f !== feeling);
+                        }
+                    };
+
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(feeling));
+                    column.appendChild(label);
+                });
+
+                grid.appendChild(column);
             });
         }
 
