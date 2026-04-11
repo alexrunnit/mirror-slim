@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { content, source, userId, latitude, longitude } = req.body;
+    const { content, userId, latitude, longitude } = req.body;
 
     if (!content || !userId) {
         return res.status(400).json({ error: 'Missing required fields' });
