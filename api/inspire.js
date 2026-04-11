@@ -45,6 +45,7 @@ module.exports = async function handler(req, res) {
     // Extract category and feeling_evoked using Haiku
     let category = '';
     let feelingEvoked = '';
+    let source = '';
 
     try {
         const extractResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -60,11 +61,12 @@ module.exports = async function handler(req, res) {
                 messages: [
                     {
                         role: 'user',
-                        content: `Extract two things from this inspiration capture and respond in exactly this format with nothing else:
+                       content: `Extract three things from this inspiration capture and respond in exactly this format with nothing else:
 CATEGORY: [one of: Person, Place, Nature, Art, Food, Music, Writing, Experience, Object, Other]
 FEELING: [one to three words describing the feeling this evoked]
+SOURCE: [the origin of this inspiration — a person, place, object, or experience extracted from the text. If unclear write Unknown]
 
-Inspiration: "${content}"${source ? `\nSource: "${source}"` : ''}`
+Inspiration: "${content}"` 
                     }
                 ]
             })
@@ -75,9 +77,11 @@ Inspiration: "${content}"${source ? `\nSource: "${source}"` : ''}`
 
         const categoryMatch = extractText.match(/CATEGORY:\s*(.+)/);
         const feelingMatch = extractText.match(/FEELING:\s*(.+)/);
+        const sourceMatch = extractText.match(/SOURCE:\s*(.+)/);
 
         if (categoryMatch) category = categoryMatch[1].trim();
         if (feelingMatch) feelingEvoked = feelingMatch[1].trim();
+        if (sourceMatch) source = sourceMatch[1].trim();
 
     } catch (extractError) {
         console.error('Extraction error:', extractError);
