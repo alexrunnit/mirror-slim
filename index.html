@@ -375,8 +375,7 @@ let currentRowId = null;
                 const categoryText = result.category ? ` · ${result.category}` : '';
                 document.getElementById('inspiration-status').innerText = 
                     `Captured${categoryText}${locationText}`;
-                document.getElementById('inspiration-content').value = '';
-                document.getElementById('inspiration-source').value = '';
+            document.getElementById('inspiration-content').value = '';    
             } else {
                 document.getElementById('inspiration-status').innerText = 'Error capturing inspiration.';
             }
@@ -393,26 +392,18 @@ let currentRowId = null;
 
             const { data: { user } } = await supabaseClient.auth.getUser();
 
-            const { data: recentEntries } = await supabaseClient
-                .from('entries')
-                .select('entry, reflection')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(5);
-
-            const feelingsNote = document.getElementById('feelings-note').value;
+        const feelingsNote = document.getElementById('feelings-note').value;
 
             const response = await fetch('/api/prompt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: user.id,
-                    recentEntries: recentEntries || [],
                     currentMood: selectedMood,
                     currentFeelings: selectedFeelings,
                     feelingsNote: feelingsNote || ''
                 })
-            });
+            });  
 
             const { prompt, rowId } = await response.json();
 
