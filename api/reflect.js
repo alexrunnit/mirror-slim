@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
     // Pull non-sensitive persona fields
     const { data: personaRows } = await supabaseClient
         .from('persona')
-        .select('field, value, category')
+     .select('field, value')
         .eq('is_sensitive', false);
 
     let personaContext = '';
@@ -131,9 +131,20 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
 }
 
 async function runSynthesis(supabaseClient, recentEntries, personaContext, userId) {
-    if (!recentEntries || recentEntries.length === 0) return;
+    if (!userId) return;
 
-    const entriesText = recentEntries
+    // Query last 10 entries directly from Supabase for accurate synthesis window
+    const { data: synthesisEntries } = await supabaseClient
+        .from('entries')
+        .select('entry, reflection, created_at')
+        .eq('user_id', userId)
+        .not('entry', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    if (!synthesisEntries || synthesisEntries.length === 0) return;
+
+    const entriesText = synthesisEntries
         .map((e, i) => `Entry ${i + 1}:\n${e.entry}`)
         .join('\n\n');
 
@@ -175,6 +186,43 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         feelingsContext = `Feelings frequency: ${sorted}`;
     }
 
+    // Pull recent inspirations for synthesis
+    const { data: recentInspirations } = await supabaseClient
+        .from('inspirations')
+        .select('content, category, feeling_evoked, location, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    // Compress inspirations data
+    let inspirationsContext = '';
+    if (recentInspirations && recentInspirations.length > 0) {
+        const categoryCount = {};
+        recentInspirations.forEach(i => {
+            if (i.category) {
+                categoryCount[i.category] = (categoryCount[i.category] || 0) + 1;
+            }
+        });
+        const categorySummary = Object.entries(categoryCount)
+            .sort((a, b) => b[1] - a[1])
+            .map(([cat, count]) => `${cat} (${count})`)
+            .join(', ');
+
+        const feelingsSummary = recentInspirations
+            .filter(i => i.feeling_evoked)
+            .map(i => i.feeling_evoked)
+            .join(', ');
+
+        const locationSummary = [...new Set(recentInspirations
+            .filter(i => i.location)
+            .map(i => i.location))]
+            .join(', ');
+
+        inspirationsContext = `Inspiration categories: ${categorySummary || 'none extracted yet'}`;
+        if (feelingsSummary) inspirationsContext += `\nFeelings evoked by inspirations: ${feelingsSummary}`;
+        if (locationSummary) inspirationsContext += `\nLocations of inspiration: ${locationSummary}`;
+    }
+
     const synthesisPrompt = `You are analyzing a private journal to extract evolving patterns and detect significant changes. You will produce two outputs.
 
 OUTPUT 1 — SUMMARY:
@@ -207,6 +255,7 @@ ${personaContext}
 
 ${moodContext ? `MOOD DATA:\n${moodContext}\n` : ''}
 ${feelingsContext ? `FEELINGS DATA:\n${feelingsContext}\n` : ''}
+${inspirationsContext ? `INSPIRATION GALLERY DATA:\n${inspirationsContext}\n` : ''}
 
 JOURNAL ENTRIES TO ANALYZE:
 ${entriesText}`;
