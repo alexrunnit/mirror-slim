@@ -42,12 +42,35 @@ module.exports = async function handler(req, res) {
         summaryContext = summaryRows[0].summary;
     }
 
-    // Build recent entry history
+    // Query recent entries directly from Supabase
+    const { data: recentEntriesData } = await supabaseClient
+        .from('entries')
+        .select('entry, created_at')
+        .eq('user_id', userId)
+        .not('entry', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
     let historyContext = '';
-    if (recentEntries && recentEntries.length > 0) {
-        historyContext = recentEntries
+    if (recentEntriesData && recentEntriesData.length > 0) {
+        historyContext = recentEntriesData
             .map((e, i) => `Entry ${i + 1}:\n${e.entry}`)
             .join('\n\n');
+    }
+
+// Pull recent inspirations for prompt context
+    const { data: recentInspirations } = await supabaseClient
+        .from('inspirations')
+        .select('content, category, feeling_evoked, location')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+    let inspirationContext = '';
+    if (recentInspirations && recentInspirations.length > 0) {
+        inspirationContext = recentInspirations
+            .map(i => `${i.content}${i.feeling_evoked ? ` (evoked: ${i.feeling_evoked})` : ''}${i.location ? ` — ${i.location}` : ''}`)
+            .join('\n');
     }
 
     // Build current state context
@@ -100,6 +123,8 @@ ${personaContext}
 ${summaryContext ? `Recent pattern summary:\n${summaryContext}\n` : ''}
 
 ${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}
+
+${inspirationContext ? `RECENT INSPIRATIONS:\n${inspirationContext}\n` : ''}
 
 ${historyContext ? `Recent entries:\n${historyContext}` : ''}`;
 
