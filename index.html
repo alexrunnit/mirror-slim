@@ -127,7 +127,7 @@
             <textarea id="undertow-entry" placeholder="What's pulling you down?" style="height:120px; font-size:0.9rem; margin-bottom:8px;"></textarea>
             <button onclick="logUndertow()" id="undertow-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Log</button>
             <div id="undertow-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-            <div id="undertow-contradiction" style="margin-top:12px; font-style:italic; color:#666; font-size:0.9rem; line-height:1.7;"></div>
+
         </div>  
 
     </div> 
@@ -489,18 +489,12 @@ async function logUndertow() {
 
             const result = await response.json();
 
-            if (result.success) {
-                const locationText = result.location ? ` · ${result.location}` : '';
-                document.getElementById('undertow-status').innerText = 
-                    `Logged · ${result.patternTag}${locationText}`;
-                if (result.contradictionNote) {
-                    document.getElementById('undertow-contradiction').innerText = 
-                        result.contradictionNote;
-                }
+          if (result.success) {
+                document.getElementById('undertow-status').innerText = 'Logged.';
                 document.getElementById('undertow-entry').value = '';
             } else {
                 document.getElementById('undertow-status').innerText = 'Error logging.';
-            }
+            }  
 
             btn.disabled = false;
         }
