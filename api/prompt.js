@@ -42,6 +42,28 @@ module.exports = async function handler(req, res) {
         summaryContext = summaryRows[0].summary;
     }
 
+// Pull most recent feelings from Supabase
+    const { data: recentFeelingsData } = await supabaseClient
+        .from('feelings')
+        .select('feeling, note, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    // Group feelings from the most recent session
+    let recentFeelingsContext = '';
+    if (recentFeelingsData && recentFeelingsData.length > 0) {
+        const mostRecentTime = new Date(recentFeelingsData[0].created_at);
+        const sessionFeelings = recentFeelingsData.filter(f => {
+            const diff = mostRecentTime - new Date(f.created_at);
+            return diff < 300000; // within 5 minutes — same session
+        });
+        const feelingNames = sessionFeelings.map(f => f.feeling).join(', ');
+        const feelingNote = sessionFeelings[0].note || '';
+        recentFeelingsContext = `Recent feelings logged: ${feelingNames}`;
+        if (feelingNote) recentFeelingsContext += `\nFeelings note: ${feelingNote}`;
+    }
+
     // Query recent entries directly from Supabase
     const { data: recentEntriesData } = await supabaseClient
         .from('entries')
@@ -122,7 +144,7 @@ ${personaContext}
 
 ${summaryContext ? `Recent pattern summary:\n${summaryContext}\n` : ''}
 
-${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}
+${currentStateContext || recentFeelingsContext ? `CURRENT STATE:\n${currentStateContext}${recentFeelingsContext ? recentFeelingsContext + '\n' : ''}` : ''}
 
 ${inspirationContext ? `RECENT INSPIRATIONS:\n${inspirationContext}\n` : ''}
 
