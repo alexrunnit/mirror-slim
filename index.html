@@ -111,7 +111,7 @@
 
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
-        <!-- Inspiration Gallery -->
+       <!-- Inspiration Gallery -->
         <div id="inspiration-section" style="margin-bottom:32px;">
             <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">INSPIRATION GALLERY</p>
             <textarea id="inspiration-content" placeholder="What moved you today?" style="height:100px; font-size:0.9rem; margin-bottom:8px;"></textarea>
@@ -119,7 +119,21 @@
             <div id="inspiration-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
         </div>
 
-    </div>
+        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
+
+        <!-- Undertows -->
+        <div id="undertow-section" style="margin-bottom:32px;">
+            <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">UNDERTOWS</p>
+            <div id="undertow-buttons" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            </div>
+            <textarea id="undertow-trigger-note" placeholder="What set it off? Optional." style="height:60px; font-size:0.9rem; margin-bottom:8px;"></textarea>
+            <textarea id="undertow-action-taken" placeholder="What did you do next? Optional." style="height:60px; font-size:0.9rem; margin-bottom:8px;"></textarea>
+            <button onclick="logUndertow()" id="undertow-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Log</button>
+            <div id="undertow-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
+            <div id="undertow-contradiction" style="margin-top:12px; font-style:italic; color:#666; font-size:0.9rem; line-height:1.7;"></div>
+        </div>
+
+    </div> 
 
     <script>
         const supabaseClient = window.supabase.createClient(
@@ -435,10 +449,117 @@ async function buildMoodPostButtons() {
 
             btn.disabled = false;
         }
-        // Initialize mood and feelings UI on load
+
+const undertowNames = [
+            'The Game Is Over',
+            'I Broke Myself',
+            'The Room Already Judged Me',
+            'Even If I Win I Lose'
+        ];
+
+        let selectedUndertow = null;
+
+        function buildUndertowButtons() {
+            const container = document.getElementById('undertow-buttons');
+            undertowNames.forEach(name => {
+                const btn = document.createElement('button');
+                btn.innerText = name;
+                btn.style.background = '#f5f5f0';
+                btn.style.color = '#555';
+                btn.style.border = '1px solid #ddd';
+                btn.style.padding = '8px 12px';
+                btn.style.fontSize = '0.85rem';
+                btn.style.cursor = 'pointer';
+                btn.style.marginTop = '0';
+                btn.id = `undertow-btn-${name.replace(/\s+/g, '-')}`;
+                btn.onclick = () => selectUndertow(name);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectUndertow(name) {
+            selectedUndertow = name;
+            undertowNames.forEach(n => {
+                const btn = document.getElementById(`undertow-btn-${n.replace(/\s+/g, '-')}`);
+                if (btn) btn.style.background = n === name ? '#2c2c2c' : '#f5f5f0';
+                if (btn) btn.style.color = n === name ? '#fff' : '#555';
+            });
+            document.getElementById('undertow-status').innerText = `${name} selected.`;
+            document.getElementById('undertow-contradiction').innerText = '';
+        }
+
+        async function logUndertow() {
+            if (!selectedUndertow) {
+                document.getElementById('undertow-status').innerText = 'Select an undertow first.';
+                return;
+            }
+
+            const btn = document.getElementById('undertow-btn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+
+            document.getElementById('undertow-status').innerText = 'Logging...';
+            document.getElementById('undertow-contradiction').innerText = '';
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const triggerNote = document.getElementById('undertow-trigger-note').value;
+            const actionTaken = document.getElementById('undertow-action-taken').value;
+
+            let latitude = null;
+            let longitude = null;
+
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+                });
+                latitude = position.coords.latitude;
+                longitude = position.coords.longitude;
+            } catch (geoError) {
+                console.log('Geolocation unavailable:', geoError);
+            }
+
+            const response = await fetch('/api/undertow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    undertowName: selectedUndertow,
+                    triggerNote: triggerNote || '',
+                    actionTaken: actionTaken || '',
+                    userId: user.id,
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const locationText = result.location ? ` · ${result.location}` : '';
+                document.getElementById('undertow-status').innerText = 
+                    `Logged · ${result.patternTag}${locationText}`;
+                if (result.contradictionNote) {
+                    document.getElementById('undertow-contradiction').innerText = 
+                        result.contradictionNote;
+                }
+                document.getElementById('undertow-trigger-note').value = '';
+                document.getElementById('undertow-action-taken').value = '';
+                selectedUndertow = null;
+                undertowNames.forEach(n => {
+                    const b = document.getElementById(`undertow-btn-${n.replace(/\s+/g, '-')}`);
+                    if (b) { b.style.background = '#f5f5f0'; b.style.color = '#555'; }
+                });
+            } else {
+                document.getElementById('undertow-status').innerText = 'Error logging undertow.';
+            }
+
+            btn.disabled = false;
+        }
+
+        // Initialize mood, feelings, and undertows UI on load
         buildMoodButtons();
         buildFeelingsGrid();
-
+        buildUndertowButtons();
+        
         async function generatePrompt() {
             document.getElementById('prompt-btn').innerText = 'Generating...';
             document.getElementById('prompt-display').innerText = '';
