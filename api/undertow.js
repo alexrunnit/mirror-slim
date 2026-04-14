@@ -5,9 +5,9 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { undertowName, triggerNote, actionTaken, userId, latitude, longitude } = req.body;
+    const { undertowEntry, userId, latitude, longitude } = req.body;
 
-    if (!undertowName || !userId) {
+    if (!undertowEntry || !userId) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -16,7 +16,17 @@ module.exports = async function handler(req, res) {
         process.env.SUPABASE_SERVICE_KEY
     );
 
-    // Run geocoding and contradiction extraction in parallel
+    // Pull undertow index for classification
+    const { data: undertowIndex } = await supabaseClient
+        .from('undertow_index')
+        .select('name, trigger_pattern, typical_internal_narrative, known_contradictions')
+        .eq('is_sensitive', true);
+
+    const undertowList = undertowIndex ? undertowIndex.map(u =>
+        `Name: ${u.name}\nTrigger pattern: ${u.trigger_pattern}\nInternal narrative: ${u.typical_internal_narrative}`
+    ).join('\n\n') : '';
+
+    // Run geocoding and classification in parallel
     const [geoResult, extractResult] = await Promise.all([
         // Geocoding
         (async () => {
@@ -42,59 +52,51 @@ module.exports = async function handler(req, res) {
             }
         })(),
 
-        // Pull recent positive data and extract contradiction note
+        // Classify undertow and generate contradiction note
         (async () => {
             try {
-                // Get undertow details for context
-                const { data: undertowData } = await supabaseClient
-                    .from('undertow_index')
-                    .select('typical_internal_narrative, known_contradictions, weakening_indicators')
-                    .eq('name', undertowName)
-                    .single();
+                const { data: recentEntries } = await supabaseClient
+                    .from('entries')
+                    .select('entry')
+                    .eq('user_id', userId)
+                    .not('entry', 'is', null)
+                    .order('created_at', { ascending: false })
+                    .limit(3);
 
-                // Get recent positive signals
-                const [entriesResult, moodResult, inspirationsResult] = await Promise.all([
-                    supabaseClient
-                        .from('entries')
-                        .select('entry, created_at')
-                        .eq('user_id', userId)
-                        .not('entry', 'is', null)
-                        .order('created_at', { ascending: false })
-                        .limit(3),
-                    supabaseClient
-                        .from('mood')
-                        .select('score, created_at')
-                        .eq('user_id', userId)
-                        .order('created_at', { ascending: false })
-                        .limit(5),
-                    supabaseClient
-                        .from('inspirations')
-                        .select('content, feeling_evoked')
-                        .eq('user_id', userId)
-                        .order('created_at', { ascending: false })
-                        .limit(3)
-                ]);
+                const { data: recentInspirations } = await supabaseClient
+                    .from('inspirations')
+                    .select('content, feeling_evoked')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(3);
 
-                const recentEntries = entriesResult.data || [];
-                const recentMoods = moodResult.data || [];
-                const recentInspirations = inspirationsResult.data || [];
+                const { data: recentMoods } = await supabaseClient
+                    .from('mood')
+                    .select('score')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
 
-                const avgMood = recentMoods.length > 0
+                const avgMood = recentMoods && recentMoods.length > 0
                     ? (recentMoods.reduce((sum, m) => sum + m.score, 0) / recentMoods.length).toFixed(1)
                     : null;
 
-                const extractPrompt = `An undertow called "${undertowName}" has just activated. 
+                const classifyPrompt = `You are analyzing a journal entry describing a difficult internal experience. Match it to the most relevant undertow from the index below, then generate a contradiction note using only the recent evidence provided.
 
-The undertow's internal narrative says: "${undertowData?.typical_internal_narrative || ''}"
+UNDERTOW INDEX:
+${undertowList}
 
-Known contradictions to this undertow: "${undertowData?.known_contradictions || ''}"
+JOURNAL ENTRY DESCRIBING THE EXPERIENCE:
+"${undertowEntry}"
 
-Recent evidence from this person's life:
-${recentEntries.map(e => `- Entry: ${e.entry?.substring(0, 200)}`).join('\n')}
+RECENT POSITIVE EVIDENCE FROM THIS PERSON'S LIFE:
+${recentEntries ? recentEntries.map(e => `- ${e.entry?.substring(0, 150)}`).join('\n') : 'None available'}
 ${avgMood ? `- Recent average mood: ${avgMood}/10` : ''}
-${recentInspirations.map(i => `- Inspiration: ${i.content?.substring(0, 100)}${i.feeling_evoked ? ` (evoked: ${i.feeling_evoked})` : ''}`).join('\n')}
+${recentInspirations ? recentInspirations.map(i => `- Inspiration: ${i.content?.substring(0, 100)}${i.feeling_evoked ? ` (evoked: ${i.feeling_evoked})` : ''}`).join('\n') : ''}
 
-Write one sentence — maximum 30 words — that names specific recent evidence from this person's actual life that directly contradicts what the undertow is claiming. Use concrete details, not general reassurance. Do not address the person directly. State the evidence as fact.`;
+Respond in exactly this format with nothing else:
+UNDERTOW: [exact name of the matching undertow]
+CONTRADICTION: [one sentence, maximum 30 words, naming specific evidence from the RECENT POSITIVE EVIDENCE section above that directly contradicts the undertow's core claim. Only use evidence present in the recent data — never reference historical events not listed above. If the recent evidence is insufficient to produce a meaningful contradiction, write NONE.]`;
 
                 const extractResponse = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
@@ -105,8 +107,8 @@ Write one sentence — maximum 30 words — that names specific recent evidence 
                     },
                     body: JSON.stringify({
                         model: 'claude-haiku-4-5-20251001',
-                        max_tokens: 100,
-                        messages: [{ role: 'user', content: extractPrompt }]
+                        max_tokens: 150,
+                        messages: [{ role: 'user', content: classifyPrompt }]
                     })
                 });
 
@@ -114,18 +116,28 @@ Write one sentence — maximum 30 words — that names specific recent evidence 
                 return extractData.content[0].text.trim();
 
             } catch (error) {
-                console.error('Contradiction extraction error:', error);
+                console.error('Classification error:', error);
                 return '';
             }
         })()
     ]);
 
     const locationName = geoResult;
-    const contradictionNote = extractResult;
+    let undertowName = '';
+    let contradictionNote = '';
 
-    // Extract pattern tag
-    let patternTag = '';
+    if (extractResult) {
+        const undertowMatch = extractResult.match(/UNDERTOW:\s*(.+)/);
+        const contradictionMatch = extractResult.match(/CONTRADICTION:\s*(.+)/);
+        if (undertowMatch) undertowName = undertowMatch[1].trim();
+        if (contradictionMatch) {
+            const raw = contradictionMatch[1].trim();
+            contradictionNote = raw === 'NONE' ? '' : raw;
+        }
+    }
+
     const hour = new Date().getHours();
+    let patternTag = '';
     if (hour >= 5 && hour < 12) patternTag = 'morning window';
     else if (hour >= 12 && hour < 17) patternTag = 'afternoon window';
     else if (hour >= 17 && hour < 21) patternTag = 'evening window';
@@ -135,9 +147,9 @@ Write one sentence — maximum 30 words — that names specific recent evidence 
     const { error } = await supabaseClient
         .from('undertow_log')
         .insert([{
-            undertow_name: undertowName,
-            trigger_note: triggerNote || null,
-            action_taken: actionTaken || null,
+            undertow_name: undertowName || 'unclassified',
+            trigger_note: undertowEntry,
+            action_taken: null,
             pattern_tag: patternTag,
             contradiction_note: contradictionNote || null,
             location: locationName || null,
