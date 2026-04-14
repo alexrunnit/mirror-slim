@@ -19,11 +19,11 @@ module.exports = async function handler(req, res) {
     // Pull undertow index for classification
     const { data: undertowIndex } = await supabaseClient
         .from('undertow_index')
-        .select('name, trigger_pattern, typical_internal_narrative, known_contradictions')
+        .select('name, trigger_pattern, typical_internal_narrative, known_contradictions, weakening_indicators')
         .eq('is_sensitive', true);
 
     const undertowList = undertowIndex ? undertowIndex.map(u =>
-        `Name: ${u.name}\nTrigger pattern: ${u.trigger_pattern}\nInternal narrative: ${u.typical_internal_narrative}`
+        `Name: ${u.name}\nTrigger pattern: ${u.trigger_pattern}\nInternal narrative: ${u.typical_internal_narrative}\nKnown contradictions: ${u.known_contradictions}\nWeakening indicators: ${u.weakening_indicators}`
     ).join('\n\n') : '';
 
     // Run geocoding and classification in parallel
@@ -81,7 +81,7 @@ module.exports = async function handler(req, res) {
                     ? (recentMoods.reduce((sum, m) => sum + m.score, 0) / recentMoods.length).toFixed(1)
                     : null;
 
-                const classifyPrompt = `You are analyzing a journal entry describing a difficult internal experience. Match it to the most relevant undertow from the index below, then generate a contradiction note using only the recent evidence provided.
+                const classifyPrompt = `You are analyzing a journal entry describing a difficult internal experience. Your job is two things: classify which undertow pattern is active, then generate a contradiction note grounded in that undertow's specific known contradictions and weakening indicators.
 
 UNDERTOW INDEX:
 ${undertowList}
@@ -89,14 +89,27 @@ ${undertowList}
 JOURNAL ENTRY DESCRIBING THE EXPERIENCE:
 "${undertowEntry}"
 
-RECENT POSITIVE EVIDENCE FROM THIS PERSON'S LIFE:
+RECENT EVIDENCE FROM THIS PERSON'S LIFE:
 ${recentEntries ? recentEntries.map(e => `- ${e.entry?.substring(0, 150)}`).join('\n') : 'None available'}
 ${avgMood ? `- Recent average mood: ${avgMood}/10` : ''}
 ${recentInspirations ? recentInspirations.map(i => `- Inspiration: ${i.content?.substring(0, 100)}${i.feeling_evoked ? ` (evoked: ${i.feeling_evoked})` : ''}`).join('\n') : ''}
 
-Respond in exactly this format with nothing else:
+INSTRUCTIONS:
+1. Identify which undertow pattern best matches the journal entry based on its trigger pattern and internal narrative
+2. Read that undertow's known_contradictions and weakening_indicators carefully
+3. Find specific recent evidence from the RECENT EVIDENCE section that maps to those known contradictions or weakening indicators for that specific undertow
+4. Write a contradiction note that names that specific evidence in relation to what that undertow claims
+
+The contradiction note must:
+- Be grounded in the matched undertow's specific claims — not generic positivity
+- Reference only recent evidence present in the data above
+- Be one sentence, maximum 30 words
+- State as fact, not reassurance
+- If recent evidence does not map to the matched undertow's specific contradictions, write NONE
+
+Respond in exactly this format:
 UNDERTOW: [exact name of the matching undertow]
-CONTRADICTION: [one sentence, maximum 30 words, naming specific evidence from the RECENT POSITIVE EVIDENCE section above that directly contradicts the undertow's core claim. Only use evidence present in the recent data — never reference historical events not listed above. If the recent evidence is insufficient to produce a meaningful contradiction, write NONE.]`;
+CONTRADICTION: [one sentence or NONE]`;
 
                 const extractResponse = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
@@ -107,7 +120,7 @@ CONTRADICTION: [one sentence, maximum 30 words, naming specific evidence from th
                     },
                     body: JSON.stringify({
                         model: 'claude-haiku-4-5-20251001',
-                        max_tokens: 150,
+                        max_tokens: 200,
                         messages: [{ role: 'user', content: classifyPrompt }]
                     })
                 });
