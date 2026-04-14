@@ -98,6 +98,8 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
         const reflection = data.content[0].text;
 
         // Update existing row if rowId exists, otherwise insert new row
+        let sessionRowId = rowId;
+
         if (rowId) {
             await supabaseClient
                 .from('entries')
@@ -108,22 +110,25 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
                 })
                 .eq('id', rowId);
         } else {
-            await supabaseClient
+            const { data: newRow } = await supabaseClient
                 .from('entries')
                 .insert([{
                     entry: entry,
                     reflection: reflection,
                     prompt_used: false,
                     user_id: userId
-                }]);
+                }])
+                .select('id')
+                .single();
+            if (newRow) sessionRowId = newRow.id;
         }
 
         // Trigger synthesis every 10 entries
-  if (totalEntryCount && totalEntryCount > 0 && (totalEntryCount + 1) % 10 === 0) {
+        if (totalEntryCount && totalEntryCount > 0 && (totalEntryCount + 1) % 10 === 0) {
             await runSynthesis(supabaseClient, recentEntries, personaContext, userId);
         }
 
-        return res.status(200).json({ reflection });
+        return res.status(200).json({ reflection, sessionRowId });
 
     } catch (error) {
         return res.status(500).json({ error: 'API call failed: ' + error.message });
@@ -170,6 +175,20 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         const avgMood = (recentMoods.reduce((sum, m) => sum + m.score, 0) / recentMoods.length).toFixed(1);
         const moodScores = recentMoods.map(m => m.score).join(', ');
         moodContext = `Mood scores (most recent first): ${moodScores}\nAverage: ${avgMood}/10`;
+    }
+
+    // Pull mood delta data from entries
+    const { data: deltaEntries } = await supabaseClient
+        .from('entries')
+        .select('mood_post, created_at')
+        .eq('user_id', userId)
+        .not('mood_post', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    let deltaContext = '';
+    if (deltaEntries && deltaEntries.length > 0) {
+        deltaContext = `Post-reflection mood scores (most recent first): ${deltaEntries.map(e => e.mood_post).join(', ')}`;
     }
 
     // Compress feelings data
@@ -254,6 +273,7 @@ PERSONA BASELINE:
 ${personaContext}
 
 ${moodContext ? `MOOD DATA:\n${moodContext}\n` : ''}
+${deltaContext ? `POST-REFLECTION MOOD DATA:\n${deltaContext}\n` : ''}
 ${feelingsContext ? `FEELINGS DATA:\n${feelingsContext}\n` : ''}
 ${inspirationsContext ? `INSPIRATION GALLERY DATA:\n${inspirationsContext}\n` : ''}
 

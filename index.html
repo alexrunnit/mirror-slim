@@ -102,6 +102,13 @@
         <button onclick="submitEntry()">Submit</button>
         <div id="reflection"></div>
 
+        <div id="mood-post-section" style="display:none; margin-top:32px;">
+            <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">HOW ARE YOU FEELING NOW?</p>
+            <div id="mood-post-buttons" style="display:flex; gap:8px; flex-wrap:wrap;">
+            </div>
+            <div id="mood-post-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
+        </div>
+
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
         <!-- Inspiration Gallery -->
@@ -213,6 +220,52 @@ let currentRowId = null;
                 btn.onclick = () => selectMood(i);
                 btn.id = `mood-${i}`;
                 container.appendChild(btn);
+            }
+        }
+
+async function buildMoodPostButtons() {
+            const container = document.getElementById('mood-post-buttons');
+            container.innerHTML = '';
+            for (let i = 1; i <= 10; i++) {
+                const btn = document.createElement('button');
+                btn.innerText = i;
+                btn.style.width = '40px';
+                btn.style.height = '40px';
+                btn.style.background = moodColors[i];
+                btn.style.color = '#fff';
+                btn.style.border = 'none';
+                btn.style.cursor = 'pointer';
+                btn.style.opacity = '0.5';
+                btn.style.marginTop = '0';
+                btn.style.padding = '0';
+                btn.onclick = () => logMoodPost(i);
+                container.appendChild(btn);
+            }
+        }
+
+        async function logMoodPost(score) {
+            if (!currentRowId) {
+                document.getElementById('mood-post-status').innerText = 'No session to update.';
+                return;
+            }
+
+            const buttons = document.getElementById('mood-post-buttons').children;
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].style.opacity = (i + 1) === score ? '1' : '0.3';
+            }
+
+            document.getElementById('mood-post-status').innerText = 'Saving...';
+
+            const { error } = await supabaseClient
+                .from('entries')
+                .update({ mood_post: score })
+                .eq('id', currentRowId);
+
+            if (error) {
+                document.getElementById('mood-post-status').innerText = 'Error saving.';
+            } else {
+                document.getElementById('mood-post-status').innerText = `Post-session mood ${score} logged.`;
+                currentRowId = null;
             }
         }
 
@@ -450,11 +503,13 @@ let currentRowId = null;
                 })
             });
 
-            const { reflection } = await response.json();
+           const { reflection, sessionRowId } = await response.json();
 
             document.getElementById('reflection').innerText = reflection;
-            currentRowId = null;
+            currentRowId = sessionRowId || currentRowId;
             promptWasUsed = false;
+            buildMoodPostButtons();
+            document.getElementById('mood-post-section').style.display = 'block'; 
         }
     </script>
 </body>
