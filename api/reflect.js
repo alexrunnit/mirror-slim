@@ -213,6 +213,24 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         .order('created_at', { ascending: false })
         .limit(20);
 
+// Pull recent field notes for synthesis
+    const { data: recentFieldNotes } = await supabaseClient
+        .from('field_notes')
+        .select('content, theme, location, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    // Compress field notes data
+    let fieldNotesContext = '';
+    if (recentFieldNotes && recentFieldNotes.length > 0) {
+        const themes = recentFieldNotes
+            .filter(n => n.theme)
+            .map(n => n.theme)
+            .join(', ');
+        fieldNotesContext = `Field note themes: ${themes || 'none extracted yet'}`;
+    }
+
     // Compress inspirations data
     let inspirationsContext = '';
     if (recentInspirations && recentInspirations.length > 0) {
@@ -276,6 +294,7 @@ ${moodContext ? `MOOD DATA:\n${moodContext}\n` : ''}
 ${deltaContext ? `POST-REFLECTION MOOD DATA:\n${deltaContext}\n` : ''}
 ${feelingsContext ? `FEELINGS DATA:\n${feelingsContext}\n` : ''}
 ${inspirationsContext ? `INSPIRATION GALLERY DATA:\n${inspirationsContext}\n` : ''}
+${fieldNotesContext ? `FIELD NOTES DATA:\n${fieldNotesContext}\n` : ''}
 
 JOURNAL ENTRIES TO ANALYZE:
 ${entriesText}`;
