@@ -627,34 +627,10 @@ let selectedTools = [];
 
             const allTools = [...(tools || []), ...(unassignedTools || [])];
 
-            const hour = new Date().getHours();
-            let timeOfDay = '';
-            let timeLabel = '';
-            if (hour >= 5 && hour < 12) { timeOfDay = 'morning'; timeLabel = 'Morning Tools'; }
-            else if (hour >= 12 && hour < 17) { timeOfDay = 'afternoon'; timeLabel = 'Afternoon Tools'; }
-            else if (hour >= 17 && hour < 21) { timeOfDay = 'evening'; timeLabel = 'Evening Tools'; }
-            else { timeOfDay = 'night'; timeLabel = 'Night Tools'; }
 
-            document.getElementById('toolbox-time-label').innerText = timeLabel;
-
-            const timeKeywords = {
-                morning: ['morning', 'dhikr', 'hydration', 'mobility', 'brooklyn', 'jazz', 'coffee', 'prayer', 'grooming', 'fashion', 'cold air', 'cuddling', 'drop it', 'journaling'],
-                afternoon: ['afternoon', 'midday', 'sun', 'nap', 'mobility', 'prayer', 'lofi', 'journaling', 'building', 'learning', 'hydration', 'drop it', 'relieving'],
-                evening: ['evening', 'brooklyn', 'prayer', 'journaling', 'lofi', 'hydration', 'bedtime', 'drop it', 'selective'],
-                night: ['bedtime', 'evening', 'prayer', 'breathing', 'drop it']
-            };
-
-            const keywords = timeKeywords[timeOfDay] || [];
-
-            const filtered = allTools.filter(t => {
-                const nameLower = t.name.toLowerCase();
-                return keywords.some(k => nameLower.includes(k)) || 
-                       !['morning', 'afternoon', 'midday', 'evening', 'bedtime'].some(k => nameLower.includes(k));
-            });
-
-            const stabilizers = filtered.filter(t => t.category === 'Stabilizer');
-            const regulators = filtered.filter(t => t.category === 'Regulator');
-            const expanders = filtered.filter(t => t.category === 'Expander');
+            const stabilizers = allTools.filter(t => t.category === 'Stabilizer').sort((a, b) => a.name.localeCompare(b.name));
+            const regulators = allTools.filter(t => t.category === 'Regulator').sort((a, b) => a.name.localeCompare(b.name));
+            const expanders = allTools.filter(t => t.category === 'Expander').sort((a, b) => a.name.localeCompare(b.name));
 
             buildCategoryButtons('stabilizer-buttons', stabilizers);
             buildCategoryButtons('regulator-buttons', regulators);
