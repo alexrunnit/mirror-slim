@@ -39,11 +39,10 @@ module.exports = async function handler(req, res) {
     }
 
     // Save to field_notes table
-    const { error } = await supabaseClient
+   const { error } = await supabaseClient
         .from('field_notes')
         .insert([{
             content: content,
-            theme: null,
             location: locationName || null,
             latitude: latitude || null,
             longitude: longitude || null,
