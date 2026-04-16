@@ -152,7 +152,34 @@
 
         <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Toolbox</p>
 
-        <p style="color:#aaa; font-size:0.9rem;">Coming soon.</p>
+        <div id="toolbox-section" style="margin-bottom:32px;">
+            <div id="toolbox-time-label" style="color:#888; font-size:0.85rem; margin-bottom:16px; letter-spacing:0.05em;"></div>
+            
+            <div id="toolbox-stabilizers" style="margin-bottom:20px;">
+                <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">STABILIZERS</p>
+                <div id="stabilizer-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+
+            <div id="toolbox-regulators" style="margin-bottom:20px;">
+                <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">REGULATORS</p>
+                <div id="regulator-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+
+            <div id="toolbox-expanders" style="margin-bottom:20px;">
+                <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">EXPANDERS</p>
+                <div id="expander-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+
+            <textarea id="toolbox-note" placeholder="Optional note about this stack..." style="height:60px; font-size:0.9rem; margin-bottom:8px;"></textarea>
+            <button onclick="logToolStack()" id="toolbox-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Log Stack</button>
+            <div id="toolbox-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
+            <div id="toolbox-summary" style="margin-top:24px; line-height:1.8; color:#444; font-size:0.95rem;"></div>
+            <div id="toolbox-feedback-section" style="display:none; margin-top:16px;">
+                <textarea id="toolbox-feedback" placeholder="How did it land? Optional." style="height:60px; font-size:0.9rem; margin-bottom:8px;"></textarea>
+                <button onclick="saveToolFeedback()" id="feedback-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd; margin-top:0;">Save Note</button>
+                <div id="feedback-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
+            </div>
+        </div>
 
     </div>
 
@@ -579,10 +606,200 @@ async function logUndertow() {
             btn.disabled = false;
         }
 
-       // Initialize mood, feelings, and undertows UI on load
+let selectedTools = [];
+        let currentToolLogIds = [];
+
+        async function buildToolboxButtons() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            
+            const { data: tools } = await supabaseClient
+                .from('tool_index')
+                .select('name, category')
+                .eq('user_id', user.id)
+                .order('name');
+
+            // Also get tools with no user_id set yet
+            const { data: unassignedTools } = await supabaseClient
+                .from('tool_index')
+                .select('name, category')
+                .is('user_id', null)
+                .order('name');
+
+            const allTools = [...(tools || []), ...(unassignedTools || [])];
+
+            const hour = new Date().getHours();
+            let timeOfDay = '';
+            let timeLabel = '';
+            if (hour >= 5 && hour < 12) { timeOfDay = 'morning'; timeLabel = 'Morning Tools'; }
+            else if (hour >= 12 && hour < 17) { timeOfDay = 'afternoon'; timeLabel = 'Afternoon Tools'; }
+            else if (hour >= 17 && hour < 21) { timeOfDay = 'evening'; timeLabel = 'Evening Tools'; }
+            else { timeOfDay = 'night'; timeLabel = 'Night Tools'; }
+
+            document.getElementById('toolbox-time-label').innerText = timeLabel;
+
+            const timeKeywords = {
+                morning: ['morning', 'dhikr', 'hydration', 'mobility', 'brooklyn', 'jazz', 'coffee', 'prayer', 'grooming', 'fashion', 'cold air', 'cuddling', 'drop it', 'journaling'],
+                afternoon: ['afternoon', 'midday', 'sun', 'nap', 'mobility', 'prayer', 'lofi', 'journaling', 'building', 'learning', 'hydration', 'drop it', 'relieving'],
+                evening: ['evening', 'brooklyn', 'prayer', 'journaling', 'lofi', 'hydration', 'bedtime', 'drop it', 'selective'],
+                night: ['bedtime', 'evening', 'prayer', 'breathing', 'drop it']
+            };
+
+            const keywords = timeKeywords[timeOfDay] || [];
+
+            const filtered = allTools.filter(t => {
+                const nameLower = t.name.toLowerCase();
+                return keywords.some(k => nameLower.includes(k)) || 
+                       !['morning', 'afternoon', 'midday', 'evening', 'bedtime'].some(k => nameLower.includes(k));
+            });
+
+            const stabilizers = filtered.filter(t => t.category === 'Stabilizer');
+            const regulators = filtered.filter(t => t.category === 'Regulator');
+            const expanders = filtered.filter(t => t.category === 'Expander');
+
+            buildCategoryButtons('stabilizer-buttons', stabilizers);
+            buildCategoryButtons('regulator-buttons', regulators);
+            buildCategoryButtons('expander-buttons', expanders);
+        }
+
+        function buildCategoryButtons(containerId, tools) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            tools.forEach(tool => {
+                const btn = document.createElement('button');
+                btn.innerText = tool.name;
+                btn.style.background = '#f5f5f0';
+                btn.style.color = '#555';
+                btn.style.border = '1px solid #ddd';
+                btn.style.padding = '6px 12px';
+                btn.style.fontSize = '0.8rem';
+                btn.style.cursor = 'pointer';
+                btn.style.marginTop = '0';
+                btn.id = `tool-btn-${tool.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}`;
+                btn.onclick = () => selectTool(tool.name);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectTool(name) {
+            const btnId = `tool-btn-${name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}`;
+            const btn = document.getElementById(btnId);
+            if (selectedTools.includes(name)) {
+                selectedTools = selectedTools.filter(t => t !== name);
+                if (btn) { btn.style.background = '#f5f5f0'; btn.style.color = '#555'; }
+            } else {
+                selectedTools.push(name);
+                if (btn) { btn.style.background = '#2c2c2c'; btn.style.color = '#fff'; }
+            }
+            document.getElementById('toolbox-status').innerText = 
+                selectedTools.length > 0 ? `${selectedTools.length} tool${selectedTools.length > 1 ? 's' : ''} selected` : '';
+        }
+
+        async function logToolStack() {
+            if (selectedTools.length === 0) {
+                document.getElementById('toolbox-status').innerText = 'Select at least one tool.';
+                return;
+            }
+
+            const btn = document.getElementById('toolbox-btn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+
+            document.getElementById('toolbox-status').innerText = 'Logging stack...';
+            document.getElementById('toolbox-summary').innerText = '';
+            document.getElementById('toolbox-feedback-section').style.display = 'none';
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const note = document.getElementById('toolbox-note').value;
+
+            let latitude = null;
+            let longitude = null;
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+                });
+                latitude = position.coords.latitude;
+                longitude = position.coords.longitude;
+            } catch (geoError) {
+                console.log('Geolocation unavailable:', geoError);
+            }
+
+            const response = await fetch('/api/toolbox', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    toolNames: selectedTools,
+                    note: note || '',
+                    userId: user.id,
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const locationText = result.location ? ` · ${result.location}` : '';
+                document.getElementById('toolbox-status').innerText = 
+                    `${result.toolCount} tool${result.toolCount > 1 ? 's' : ''} logged · ${result.timeOfDay}${locationText}`;
+                
+                if (result.stackSummary) {
+                    document.getElementById('toolbox-summary').innerText = result.stackSummary;
+                    document.getElementById('toolbox-feedback-section').style.display = 'block';
+                }
+
+                // Store log IDs for feedback
+                const { data: recentLogs } = await supabaseClient
+                    .from('tool_log')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(selectedTools.length);
+                
+                currentToolLogIds = recentLogs ? recentLogs.map(l => l.id) : [];
+
+                // Reset selections
+                selectedTools.forEach(name => {
+                    const btnId = `tool-btn-${name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}`;
+                    const toolBtn = document.getElementById(btnId);
+                    if (toolBtn) { toolBtn.style.background = '#f5f5f0'; toolBtn.style.color = '#555'; }
+                });
+                selectedTools = [];
+                document.getElementById('toolbox-note').value = '';
+
+            } else {
+                document.getElementById('toolbox-status').innerText = 'Error logging stack.';
+            }
+
+            btn.disabled = false;
+        }
+
+        async function saveToolFeedback() {
+            const feedback = document.getElementById('toolbox-feedback').value;
+            if (!feedback.trim()) return;
+
+            const feedbackBtn = document.getElementById('feedback-btn');
+            feedbackBtn.disabled = true;
+
+            if (currentToolLogIds.length > 0) {
+                await Promise.all(currentToolLogIds.map(id => 
+                    supabaseClient
+                        .from('tool_log')
+                        .update({ user_feedback: feedback })
+                        .eq('id', id)
+                ));
+            }
+
+            document.getElementById('feedback-status').innerText = 'Note saved.';
+            document.getElementById('toolbox-feedback').value = '';
+            feedbackBtn.disabled = false;
+        }
+
+       // Initialize mood, feelings, and toolbox UI on load
         buildMoodButtons();
-        buildMoodPostButtons();
         buildFeelingsGrid();
+        buildToolboxButtons();
+
+
 
         async function generatePrompt() {
             document.getElementById('prompt-btn').innerText = 'Generating...';
