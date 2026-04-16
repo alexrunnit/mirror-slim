@@ -651,6 +651,7 @@ async function logUndertow() {
 
             document.getElementById('reflection').innerText = reflection;
             currentRowId = sessionRowId || currentRowId;
+            console.log('currentRowId after submit:', currentRowId);
             promptWasUsed = false;
             buildMoodPostButtons();
     
