@@ -298,7 +298,6 @@ async function buildMoodPostButtons() {
                 .update({ mood_post: score })
                 .eq('id', currentRowId);
 
-            console.log('logMoodPost - currentRowId:', currentRowId, 'score:', score, 'error:', error);
 
             if (error) {
                 document.getElementById('mood-post-status').innerText = 'Error saving.';
@@ -653,7 +652,6 @@ async function logUndertow() {
 
             document.getElementById('reflection').innerText = reflection;
             currentRowId = sessionRowId || currentRowId;
-            console.log('currentRowId after submit:', currentRowId);
             promptWasUsed = false;
             buildMoodPostButtons();
     
