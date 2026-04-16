@@ -298,6 +298,8 @@ async function buildMoodPostButtons() {
                 .update({ mood_post: score })
                 .eq('id', currentRowId);
 
+            console.log('logMoodPost - currentRowId:', currentRowId, 'score:', score, 'error:', error);
+
             if (error) {
                 document.getElementById('mood-post-status').innerText = 'Error saving.';
             } else {
