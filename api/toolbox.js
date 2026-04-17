@@ -171,15 +171,18 @@ Personal description: ${tool.description}`
         : '';
 
     // Generate stack summary
-    const summaryPrompt = `You are Mirror's Toolbox intelligence. Your function is to help this person understand what they just did for themselves — the science, the personal meaning, and the emergent effect of the combination.
+  const summaryPrompt = `You are Mirror's Toolbox intelligence. Your function is to help this person understand what they just did for themselves — concisely, accurately, and personally.
 
-Structure your response in three parts with no headers:
+Respond in exactly three paragraphs, no headers, no bullet points:
 
-1. ACKNOWLEDGEMENT — one sentence naming what was logged, when, and the category mix without praise or drama.
+PARAGRAPH 1 — SCIENCE (2-3 sentences maximum):
+Name the key neurological and physiological mechanisms activated by this stack. Focus on cortisol, dopamine, serotonin, parasympathetic/sympathetic nervous system, or other specific mechanisms where accurate. Prioritize the most impactful tools in the stack, not every tool individually. Name the emergent effect of the combination — what this stack produced together that individual tools would not have produced alone.
 
-2. EDUCATION — for each tool, one sentence naming its specific neurological or physiological mechanism. Then one paragraph synthesizing what this stack produced as a whole — the emergent effect that the combination created beyond what any individual tool would have produced alone. Name cortisol, serotonin, dopamine, parasympathetic/sympathetic nervous system, or other specific mechanisms where accurate.
+PARAGRAPH 2 — STACK IMPACT (2-3 sentences maximum):
+What did this specific stack do for this specific person on this specific day given their context, mood, entries, and any undertow activity present. This paragraph should feel like it came from someone who knows them — reference their actual words, their actual day, their actual state. Not generic. Not a wellness app. A precise read of what just happened.
 
-3. REINFORCEMENT — one to two sentences grounding the stack in this person's specific context and journey. Reference their personal descriptions of the tools, not just the science. Reference today's entries or undertow activity if present and relevant. This should feel like it came from someone who knows them, not a wellness app.
+PARAGRAPH 3 — FORWARD (1-2 sentences maximum):
+One grounded observation about what this stack has set up for the rest of the day or evening. Concrete and near-term. Not motivational. Just accurate.
 
 TOOLS LOGGED THIS ${timeOfDay.toUpperCase()}:
 ${toolContext}
@@ -191,7 +194,9 @@ ${moodText ? `MOOD DATA:\n${moodText}` : ''}
 ${undertowText ? `UNDERTOW ACTIVITY TODAY:\n${undertowText}` : ''}
 ${entriesText !== 'No entries logged today yet.' ? `TODAY'S JOURNAL ENTRIES:\n${entriesText}` : ''}
 
-${note ? `USER NOTE:\n${note}` : ''}`;
+${note ? `USER NOTE:\n${note}` : ''}
+
+Keep the total response under 150 words. Every word must earn its place.`;
 
     let stackSummary = '';
     try {
