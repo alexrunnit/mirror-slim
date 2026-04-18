@@ -566,7 +566,7 @@ async function logUndertow() {
             if (btn.disabled) return;
             btn.disabled = true;
 
-            document.getElementById('undertow-status').innerText = 'Logging...';
+            document.getElementById('undertow-status').innerText = 'Capturing...';
 
             const { data: { user } } = await supabaseClient.auth.getUser();
 
@@ -598,7 +598,7 @@ async function logUndertow() {
 
           if (result.success) {
                 const locationText = result.location ? ` · ${result.location}` : '';
-                document.getElementById('undertow-status').innerText = `Logged${locationText}`;
+                document.getElementById('undertow-status').innerText = `Captured${locationText}`;
                 document.getElementById('undertow-entry').value = '';
             } else {
                 document.getElementById('undertow-status').innerText = 'Error logging.';
