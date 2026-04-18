@@ -287,7 +287,7 @@ let currentRowId = null;
             }
         }
 
-async function buildMoodPostButtons() {
+function buildMoodPostButtons() {
             const container = document.getElementById('mood-post-buttons');
             container.innerHTML = '';
             for (let i = 1; i <= 10; i++) {
@@ -597,7 +597,8 @@ async function logUndertow() {
             const result = await response.json();
 
           if (result.success) {
-                document.getElementById('undertow-status').innerText = 'Logged.';
+                const locationText = result.location ? ` · ${result.location}` : '';
+                document.getElementById('undertow-status').innerText = `Logged${locationText}`;
                 document.getElementById('undertow-entry').value = '';
             } else {
                 document.getElementById('undertow-status').innerText = 'Error logging.';
