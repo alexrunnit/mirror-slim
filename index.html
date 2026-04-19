@@ -181,6 +181,40 @@
             </div>
         </div>
 
+        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
+
+        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
+
+        <div id="summary-section" style="margin-bottom:32px;">
+            <p style="color:#888; font-size:0.85rem; margin-bottom:16px; letter-spacing:0.05em;">GENERATE SUMMARY</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+                <button onclick="generateSummary(7)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 7 days</button>
+                <button onclick="generateSummary(30)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 30 days</button>
+                <button onclick="generateSummary(60)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 60 days</button>
+                <button onclick="generateSummary(90)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 90 days</button>
+                <button onclick="generateSummary(365)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">All time</button>
+            </div>
+            <div id="summary-status" style="margin-bottom:16px; font-size:0.85rem; color:#888;"></div>
+
+            <div id="summary-output" style="display:none;">
+                <div id="summary-s1" style="margin-bottom:32px;"></div>
+                <div id="summary-s2" style="margin-bottom:32px;"></div>
+                <div id="summary-s3" style="margin-bottom:32px;"></div>
+                <div id="summary-s4" style="margin-bottom:32px;"></div>
+                <div id="summary-s5" style="margin-bottom:32px;"></div>
+                <div id="summary-s6" style="margin-bottom:32px;"></div>
+                <div id="summary-s7" style="margin-bottom:32px;"></div>
+                <div id="summary-s8" style="margin-bottom:32px;"></div>
+
+                <div style="margin-top:32px;">
+                    <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">YOUR NOTES</p>
+                    <textarea id="summary-notes" placeholder="Your response to this summary..." style="height:120px; font-size:0.9rem; margin-bottom:8px;"></textarea>
+                    <button onclick="saveSummaryNotes()" id="summary-notes-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd; margin-top:0;">Save Notes</button>
+                    <div id="summary-notes-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -769,6 +803,71 @@ let selectedTools = [];
             document.getElementById('feedback-status').innerText = 'Note saved.';
             document.getElementById('toolbox-feedback').value = '';
             feedbackBtn.disabled = false;
+        }
+
+let currentSummaryId = null;
+
+        async function generateSummary(days) {
+            document.getElementById('summary-status').innerText = 'Generating summary... this may take 20-30 seconds.';
+            document.getElementById('summary-output').style.display = 'none';
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            const periodEnd = new Date().toISOString();
+            const periodStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+            const response = await fetch('/api/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    periodStart: periodStart,
+                    periodEnd: periodEnd,
+                    summaryType: 'custom'
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                currentSummaryId = result.summaryId;
+                const s = result.sections;
+
+                document.getElementById('summary-s1').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">The Period</p><div style="line-height:1.8; color:#444;">${s.section1_period}</div>`;
+                document.getElementById('summary-s2').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Mood Arc</p><div style="line-height:1.8; color:#444;">${s.section2_mood}</div>`;
+                document.getElementById('summary-s3').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Reflection Distillation</p><div style="line-height:1.8; color:#444;">${s.section3_reflections}</div>`;
+                document.getElementById('summary-s4').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Language and Tone Drift</p><div style="line-height:1.8; color:#444;">${s.section4_language}</div>`;
+                document.getElementById('summary-s5').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Your Words</p><div style="line-height:1.8; color:#444; font-style:italic;">${s.section5_your_words}</div>`;
+                document.getElementById('summary-s6').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Tool Intelligence</p><div style="line-height:1.8; color:#444;">${s.section6_tools}</div>`;
+                document.getElementById('summary-s7').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Progression Markers</p><div style="line-height:1.8; color:#444;">${s.section7_progression}</div>`;
+                document.getElementById('summary-s8').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Forward</p><div style="line-height:1.8; color:#444;">${s.section8_forward}</div>`;
+
+                document.getElementById('summary-output').style.display = 'block';
+                document.getElementById('summary-status').innerText = `Summary generated · ${days} day${days > 1 ? 's' : ''}`;
+            } else {
+                document.getElementById('summary-status').innerText = 'Error generating summary: ' + (result.error || 'unknown error');
+            }
+        }
+
+        async function saveSummaryNotes() {
+            const notes = document.getElementById('summary-notes').value;
+            if (!notes.trim() || !currentSummaryId) return;
+
+            const btn = document.getElementById('summary-notes-btn');
+            btn.disabled = true;
+
+            const { error } = await supabaseClient
+                .from('summaries')
+                .update({ user_notes: notes })
+                .eq('id', currentSummaryId);
+
+            if (error) {
+                document.getElementById('summary-notes-status').innerText = 'Error saving notes.';
+            } else {
+                document.getElementById('summary-notes-status').innerText = 'Notes saved.';
+            }
+
+            btn.disabled = false;
         }
 
        // Initialize mood, feelings, and toolbox UI on load
