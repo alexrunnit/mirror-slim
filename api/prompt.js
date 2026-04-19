@@ -32,14 +32,24 @@ module.exports = async function handler(req, res) {
     // Pull most recent summary
     const { data: summaryRows } = await supabaseClient
         .from('summaries')
-        .select('summary')
+        .select('summary, summary_type')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1);
 
     let summaryContext = '';
     if (summaryRows && summaryRows.length > 0) {
-        summaryContext = summaryRows[0].summary;
+        const rawSummary = summaryRows[0].summary;
+        try {
+            const parsed = JSON.parse(rawSummary);
+            summaryContext = [
+                parsed.section3_reflections,
+                parsed.section7_progression,
+                parsed.section8_forward
+            ].filter(Boolean).join('\n\n');
+        } catch {
+            summaryContext = rawSummary;
+        }
     }
 
 // Pull most recent feelings from Supabase

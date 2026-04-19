@@ -32,14 +32,24 @@ module.exports = async function handler(req, res) {
     // Pull most recent summary
     const { data: summaryRows } = await supabaseClient
         .from('summaries')
-        .select('summary')
+        .select('summary, summary_type')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1);
 
     let summaryContext = '';
     if (summaryRows && summaryRows.length > 0) {
-        summaryContext = summaryRows[0].summary;
+        const rawSummary = summaryRows[0].summary;
+        try {
+            const parsed = JSON.parse(rawSummary);
+            summaryContext = [
+                parsed.section3_reflections,
+                parsed.section7_progression,
+                parsed.section8_forward
+            ].filter(Boolean).join('\n\n');
+        } catch {
+            summaryContext = rawSummary;
+        }
     }
 
     // Build recent entry history context
@@ -127,6 +137,9 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
         if (totalEntryCount && totalEntryCount > 0 && (totalEntryCount + 1) % 10 === 0) {
             await runSynthesis(supabaseClient, recentEntries, personaContext, userId);
         }
+
+        // Trigger weekly summary if 7 days have elapsed
+        await checkAndGenerateWeeklySummary(supabaseClient, userId);
 
         return res.status(200).json({ reflection, sessionRowId });
 
@@ -364,5 +377,41 @@ ${entriesText}`;
 
     } catch (error) {
         console.error('Synthesis error:', error);
+    }
+}
+
+async function checkAndGenerateWeeklySummary(supabaseClient, userId) {
+    try {
+        // Check when last weekly summary was generated
+        const { data: lastWeekly } = await supabaseClient
+            .from('summaries')
+            .select('created_at')
+            .eq('user_id', userId)
+            .eq('summary_type', 'weekly')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        const now = new Date();
+        const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+        // If no weekly summary exists or last one was more than 7 days ago
+        if (!lastWeekly || lastWeekly.length === 0 || new Date(lastWeekly[0].created_at) < sevenDaysAgo) {
+            const periodEnd = now.toISOString();
+            const periodStart = sevenDaysAgo.toISOString();
+
+            // Call the summary function
+            await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/summary`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    periodStart: periodStart,
+                    periodEnd: periodEnd,
+                    summaryType: 'weekly'
+                })
+            });
+        }
+    } catch (error) {
+        console.error('Weekly summary check error:', error);
     }
 }
