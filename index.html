@@ -73,52 +73,49 @@
         <div id="status"></div>
     </div>
 
-  <div id="writing-screen" style="display:none;">
+    <div id="writing-screen" style="display:none;">
 
-<p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Reflection Loop</p>
+        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Reflection Loop</p>
 
         <!-- Mood tracker -->
         <div id="mood-section" style="margin-bottom:32px;">
             <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">MOOD</p>
-            <div id="mood-buttons" style="display:flex; gap:8px; flex-wrap:wrap;">
-            </div>
+            <div id="mood-buttons" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
             <div id="mood-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
         </div>
 
         <!-- Feelings tracker -->
         <div id="feelings-section" style="margin-bottom:32px;">
             <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">FEELINGS</p>
-            <div id="feelings-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:16px;">
-            </div>
+            <div id="feelings-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:16px;"></div>
             <textarea id="feelings-note" placeholder="Say more if you want to..." style="height:80px; font-size:0.9rem;"></textarea>
-            <button onclick="saveFeelings()" id="feelings-btn" style="margin-top:8px; background:#f5f5f0; color:#555; border: 1px solid #ddd;">Save Feelings</button>
+            <button onclick="saveFeelings()" id="feelings-btn" style="margin-top:8px; background:#f5f5f0; color:#555; border:1px solid #ddd;">Save Feelings</button>
             <div id="feelings-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
         </div>
 
         <hr style="border:none; border-top:1px solid #eee; margin-bottom:32px;">
 
         <!-- Writing surface -->
-        <button onclick="generatePrompt()" id="prompt-btn" style="background:#f5f5f0; color:#555; border: 1px solid #ddd; margin-bottom:16px;">Generate Prompt</button>
+        <button onclick="generatePrompt()" id="prompt-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd; margin-bottom:16px;">Generate Prompt</button>
         <div id="prompt-display" style="margin-bottom:16px; font-style:italic; color:#666; line-height:1.7;"></div>
         <textarea id="entry" placeholder="Write here..."></textarea>
-       <button onclick="submitEntry()">Reflect</button>
+        <button onclick="submitEntry()">Reflect</button>
 
-<div id="reflection"></div>
+        <div id="reflection"></div>
 
         <div id="mood-post-section" style="display:block; margin-top:32px;">
             <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">POST-WRITING MOOD</p>
-            <div id="mood-post-buttons" style="display:flex; gap:8px; flex-wrap:wrap;">
-            </div>
+            <div id="mood-post-buttons" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
             <div id="mood-post-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
         </div>
 
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
-       <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Observation Gallery</p>
+        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Observation Gallery</p>
 
-        <!-- Inspiration Gallery -->
+        <!-- Inspirations -->
         <div id="inspiration-section" style="margin-bottom:32px;">
-         <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">INSPIRATIONS</p>   
+            <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">INSPIRATIONS</p>
             <textarea id="inspiration-content" placeholder="What moved you today?" style="height:100px; font-size:0.9rem; margin-bottom:8px;"></textarea>
             <button onclick="captureInspiration()" id="inspire-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Capture</button>
             <div id="inspiration-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
@@ -126,7 +123,7 @@
 
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
-<!-- Field Notes -->
+        <!-- Field Notes -->
         <div id="fieldnote-section" style="margin-bottom:32px;">
             <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">FIELD NOTES</p>
             <textarea id="fieldnote-content" placeholder="Note something you observed..." style="height:100px; font-size:0.9rem; margin-bottom:8px;"></textarea>
@@ -136,16 +133,12 @@
 
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
-      <!-- Undertows -->
+        <!-- Undertows -->
         <div id="undertow-section" style="margin-bottom:32px;">
-
-      <!-- Undertows -->
-        <div id="undertow-section" style="margin-bottom:32px;">
-          <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">UNDERTOWS</p>  
+            <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">UNDERTOWS</p>
             <textarea id="undertow-entry" placeholder="What's pulling you down?" style="height:120px; font-size:0.9rem; margin-bottom:8px;"></textarea>
-           <button onclick="logUndertow()" id="undertow-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Capture</button> 
+            <button onclick="logUndertow()" id="undertow-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Capture</button>
             <div id="undertow-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-
         </div>
 
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
@@ -154,22 +147,18 @@
 
         <div id="toolbox-section" style="margin-bottom:32px;">
             <div id="toolbox-time-label" style="color:#888; font-size:0.85rem; margin-bottom:16px; letter-spacing:0.05em;"></div>
-            
             <div id="toolbox-stabilizers" style="margin-bottom:20px;">
                 <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">STABILIZERS</p>
                 <div id="stabilizer-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
             </div>
-
             <div id="toolbox-regulators" style="margin-bottom:20px;">
                 <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">REGULATORS</p>
                 <div id="regulator-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
             </div>
-
             <div id="toolbox-expanders" style="margin-bottom:20px;">
                 <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">EXPANDERS</p>
                 <div id="expander-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
             </div>
-
             <textarea id="toolbox-note" placeholder="Optional note about this stack..." style="height:60px; font-size:0.9rem; margin-bottom:8px;"></textarea>
             <button onclick="logToolStack()" id="toolbox-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Log Stack</button>
             <div id="toolbox-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
@@ -181,11 +170,7 @@
             </div>
         </div>
 
-<hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
-
-        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Archive</p>
-
-<hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
+        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
         <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
 
@@ -223,7 +208,6 @@
 
         <div id="archive-section" style="margin-bottom:32px;">
 
-            <!-- Search -->
             <div style="margin-bottom:32px;">
                 <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">SEARCH YOUR ARCHIVE</p>
                 <input type="text" id="archive-search-input" placeholder="Ask anything about your journal..." style="width:100%; padding:12px 16px; font-family:Georgia, serif; font-size:0.9rem; border:1px solid #ddd; background:#fff; box-sizing:border-box; margin-bottom:8px;">
@@ -234,7 +218,6 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin-bottom:32px;">
 
-            <!-- Summaries -->
             <div style="margin-bottom:32px;">
                 <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">SUMMARIES</p>
                 <button onclick="loadArchive('summaries')" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0; margin-bottom:16px;">Load Summaries</button>
@@ -244,7 +227,6 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin-bottom:32px;">
 
-            <!-- Reflection Loops -->
             <div style="margin-bottom:32px;">
                 <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">REFLECTION LOOPS</p>
                 <button onclick="loadArchive('reflections')" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0; margin-bottom:16px;">Load Reflections</button>
@@ -256,34 +238,27 @@
 
     </div>
 
-
+    <script>
         const supabaseClient = window.supabase.createClient(
             'https://ncecqssxcmmbkbnokjqd.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWNxc3N4Y21tYmtibm9ranFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjkwMjgsImV4cCI6MjA5MTEwNTAyOH0.PitKp7H_oG8hXbbhdTT7OjLAzJ1JWv3N_ZSRbM84Xa4'
         )
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                showWritingScreen();
-            }
+            if (session) showWritingScreen();
         });
 
         supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (session) {
-                showWritingScreen();
-            }
+            if (session) showWritingScreen();
         });
-
 
         async function showWritingScreen() {
             const { data: { user } } = await supabaseClient.auth.getUser();
-            
             if (user.email !== 'kamshoshy@gmail.com') {
                 document.getElementById('login-screen').innerHTML = '<p style="color:#888;">Access denied.</p>';
                 await supabaseClient.auth.signOut();
                 return;
             }
-
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('writing-screen').style.display = 'block';
         }
@@ -291,16 +266,11 @@
         async function sendMagicLink() {
             const email = document.getElementById('email').value;
             if (!email.trim()) return;
-
             document.getElementById('status').innerText = 'Sending...';
-
             const { error } = await supabaseClient.auth.signInWithOtp({
                 email: email,
-                options: {
-                    emailRedirectTo: 'https://mirror-slim.vercel.app'
-                }
+                options: { emailRedirectTo: 'https://mirror-slim.vercel.app' }
             });
-
             if (error) {
                 document.getElementById('status').innerText = 'Error: ' + error.message;
             } else {
@@ -308,36 +278,29 @@
             }
         }
 
-let currentRowId = null;
+        let currentRowId = null;
         let promptWasUsed = false;
         let selectedMood = null;
         let selectedFeelings = [];
 
-        // Mood color system
         const moodColors = {
             1: '#e8e8e8', 2: '#c8d4dc', 3: '#a8bfcf',
             4: '#7ea8c4', 5: '#5490b8', 6: '#3a78aa',
             7: '#2560a0', 8: '#1a4d8c', 9: '#0f3875', 10: '#08235e'
         };
 
-        const feelingsList = {
-            difficult: [
-                'Anxious', 'Overwhelmed', 'Sad', 'Lonely', 'Frustrated',
-                'Irritable', 'Numb', 'Fearful', 'Ashamed', 'Disconnected',
-                'Restless', 'Heavy'
-            ],
-            neutral: [
-                'Uncertain', 'Contemplative', 'Tired', 'Distracted',
-                'Flat', 'Cautious', 'Waiting'
-            ],
-            expansive: [
-                'Calm', 'Grateful', 'Hopeful', 'Curious', 'Confident',
-                'Energized', 'Proud', 'Connected', 'Peaceful', 'Inspired',
-                'Clear', 'Joyful'
-            ]
+        const moodColorMap = {
+            1: '#e8e8e8', 2: '#c8d4dc', 3: '#a8bfcf',
+            4: '#7ea8c4', 5: '#5490b8', 6: '#3a78aa',
+            7: '#2560a0', 8: '#1a4d8c', 9: '#0f3875', 10: '#08235e'
         };
 
-        // Build mood buttons
+        const feelingsList = {
+            difficult: ['Anxious','Overwhelmed','Sad','Lonely','Frustrated','Irritable','Numb','Fearful','Ashamed','Disconnected','Restless','Heavy'],
+            neutral: ['Uncertain','Contemplative','Tired','Distracted','Flat','Cautious','Waiting'],
+            expansive: ['Calm','Grateful','Hopeful','Curious','Confident','Energized','Proud','Connected','Peaceful','Inspired','Clear','Joyful']
+        };
+
         function buildMoodButtons() {
             const container = document.getElementById('mood-buttons');
             for (let i = 1; i <= 10; i++) {
@@ -358,7 +321,7 @@ let currentRowId = null;
             }
         }
 
-function buildMoodPostButtons() {
+        function buildMoodPostButtons() {
             const container = document.getElementById('mood-post-buttons');
             container.innerHTML = '';
             for (let i = 1; i <= 10; i++) {
@@ -383,20 +346,12 @@ function buildMoodPostButtons() {
                 document.getElementById('mood-post-status').innerText = 'No session to update.';
                 return;
             }
-
             const buttons = document.getElementById('mood-post-buttons').children;
             for (let i = 0; i < buttons.length; i++) {
                 buttons[i].style.opacity = (i + 1) === score ? '1' : '0.3';
             }
-
             document.getElementById('mood-post-status').innerText = 'Saving...';
-
-            const { error } = await supabaseClient
-                .from('entries')
-                .update({ mood_post: score })
-                .eq('id', currentRowId);
-
-
+            const { error } = await supabaseClient.from('entries').update({ mood_post: score }).eq('id', currentRowId);
             if (error) {
                 document.getElementById('mood-post-status').innerText = 'Error saving.';
             } else {
@@ -407,20 +362,12 @@ function buildMoodPostButtons() {
 
         async function selectMood(score) {
             selectedMood = score;
-
-            // Update button visuals
             for (let i = 1; i <= 10; i++) {
                 document.getElementById(`mood-${i}`).style.opacity = i === score ? '1' : '0.3';
             }
-
             document.getElementById('mood-status').innerText = 'Saving...';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-
-            const { error } = await supabaseClient
-                .from('mood')
-                .insert([{ score: score, user_id: user.id }]);
-
+            const { error } = await supabaseClient.from('mood').insert([{ score: score, user_id: user.id }]);
             if (error) {
                 document.getElementById('mood-status').innerText = 'Error saving mood.';
             } else {
@@ -428,21 +375,17 @@ function buildMoodPostButtons() {
             }
         }
 
-        // Build feelings grid
         function buildFeelingsGrid() {
             const grid = document.getElementById('feelings-grid');
             grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
             grid.style.alignItems = 'start';
-
             const columns = [
                 { key: 'difficult', label: 'Challenging' },
                 { key: 'neutral', label: 'Neutral' },
                 { key: 'expansive', label: 'Expansive' }
             ];
-
             columns.forEach(col => {
                 const column = document.createElement('div');
-
                 const header = document.createElement('p');
                 header.innerText = col.label;
                 header.style.fontSize = '0.75rem';
@@ -451,7 +394,6 @@ function buildMoodPostButtons() {
                 header.style.marginBottom = '8px';
                 header.style.marginTop = '0';
                 column.appendChild(header);
-
                 feelingsList[col.key].forEach(feeling => {
                     const label = document.createElement('label');
                     label.style.display = 'flex';
@@ -461,7 +403,6 @@ function buildMoodPostButtons() {
                     label.style.cursor = 'pointer';
                     label.style.color = '#555';
                     label.style.marginBottom = '6px';
-
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.value = feeling;
@@ -472,12 +413,10 @@ function buildMoodPostButtons() {
                             selectedFeelings = selectedFeelings.filter(f => f !== feeling);
                         }
                     };
-
                     label.appendChild(checkbox);
                     label.appendChild(document.createTextNode(feeling));
                     column.appendChild(label);
                 });
-
                 grid.appendChild(column);
             });
         }
@@ -487,25 +426,14 @@ function buildMoodPostButtons() {
                 document.getElementById('feelings-status').innerText = 'Select at least one feeling.';
                 return;
             }
-
             const btn = document.getElementById('feelings-btn');
             if (btn.disabled) return;
             btn.disabled = true;
-
             document.getElementById('feelings-status').innerText = 'Saving...';
             const { data: { user } } = await supabaseClient.auth.getUser();
             const note = document.getElementById('feelings-note').value;
-
-            const rows = selectedFeelings.map(feeling => ({
-                feeling: feeling,
-                note: note || null,
-                user_id: user.id
-            }));
-
-            const { error } = await supabaseClient
-                .from('feelings')
-                .insert(rows);
-
+            const rows = selectedFeelings.map(feeling => ({ feeling: feeling, note: note || null, user_id: user.id }));
+            const { error } = await supabaseClient.from('feelings').insert(rows);
             if (error) {
                 document.getElementById('feelings-status').innerText = 'Error saving feelings.';
             } else {
@@ -520,190 +448,117 @@ function buildMoodPostButtons() {
                 document.getElementById('inspiration-status').innerText = 'Write something first.';
                 return;
             }
-
             const btn = document.getElementById('inspire-btn');
             if (btn.disabled) return;
             btn.disabled = true;
-
             document.getElementById('inspiration-status').innerText = 'Capturing...';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-            const source = '';
-            // Get geolocation
-            let latitude = null;
-            let longitude = null;
-
+            let latitude = null, longitude = null;
             try {
                 const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, {
-                        timeout: 5000
-                    });
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
                 });
                 latitude = position.coords.latitude;
                 longitude = position.coords.longitude;
-            } catch (geoError) {
-                console.log('Geolocation unavailable:', geoError);
-            }
-
+            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
             const response = await fetch('/api/inspire', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: content,
-                    source: source || '',
-                    userId: user.id,
-                    latitude: latitude,
-                    longitude: longitude
-                })
+                body: JSON.stringify({ content: content, source: '', userId: user.id, latitude: latitude, longitude: longitude })
             });
-
             const result = await response.json();
-
             if (result.success) {
                 const locationText = result.location ? ` · ${result.location}` : '';
                 const categoryText = result.category ? ` · ${result.category}` : '';
-                document.getElementById('inspiration-status').innerText = 
-                    `Captured${categoryText}${locationText}`;
-            document.getElementById('inspiration-content').value = '';    
+                document.getElementById('inspiration-status').innerText = `Captured${categoryText}${locationText}`;
+                document.getElementById('inspiration-content').value = '';
             } else {
                 document.getElementById('inspiration-status').innerText = 'Error capturing inspiration.';
             }
-
             btn.disabled = false;
         }
 
-async function captureFieldNote() {
+        async function captureFieldNote() {
             const content = document.getElementById('fieldnote-content').value;
             if (!content.trim()) {
                 document.getElementById('fieldnote-status').innerText = 'Write something first.';
                 return;
             }
-
             const btn = document.getElementById('fieldnote-btn');
             if (btn.disabled) return;
             btn.disabled = true;
-
             document.getElementById('fieldnote-status').innerText = 'Capturing...';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-
-            let latitude = null;
-            let longitude = null;
-
+            let latitude = null, longitude = null;
             try {
                 const position = await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
                 });
                 latitude = position.coords.latitude;
                 longitude = position.coords.longitude;
-            } catch (geoError) {
-                console.log('Geolocation unavailable:', geoError);
-            }
-
+            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
             const response = await fetch('/api/fieldnote', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: content,
-                    userId: user.id,
-                    latitude: latitude,
-                    longitude: longitude
-                })
+                body: JSON.stringify({ content: content, userId: user.id, latitude: latitude, longitude: longitude })
             });
-
             const result = await response.json();
-
             if (result.success) {
                 const locationText = result.location ? ` · ${result.location}` : '';
-                const themeText = result.theme ? ` · ${result.theme}` : '';
-                document.getElementById('fieldnote-status').innerText = 
-                    `Captured${themeText}${locationText}`;
+                document.getElementById('fieldnote-status').innerText = `Captured${locationText}`;
                 document.getElementById('fieldnote-content').value = '';
             } else {
                 document.getElementById('fieldnote-status').innerText = 'Error capturing field note.';
             }
-
             btn.disabled = false;
         }
 
-async function logUndertow() {
+        async function logUndertow() {
             const entry = document.getElementById('undertow-entry').value;
             if (!entry.trim()) {
                 document.getElementById('undertow-status').innerText = 'Write something first.';
                 return;
             }
-
             const btn = document.getElementById('undertow-btn');
             if (btn.disabled) return;
             btn.disabled = true;
-
             document.getElementById('undertow-status').innerText = 'Capturing...';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-
-            let latitude = null;
-            let longitude = null;
-
+            let latitude = null, longitude = null;
             try {
                 const position = await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
                 });
                 latitude = position.coords.latitude;
                 longitude = position.coords.longitude;
-            } catch (geoError) {
-                console.log('Geolocation unavailable:', geoError);
-            }
-
+            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
             const response = await fetch('/api/undertow', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    undertowEntry: entry,
-                    userId: user.id,
-                    latitude: latitude,
-                    longitude: longitude
-                })
+                body: JSON.stringify({ undertowEntry: entry, userId: user.id, latitude: latitude, longitude: longitude })
             });
-
             const result = await response.json();
-
-          if (result.success) {
+            if (result.success) {
                 const locationText = result.location ? ` · ${result.location}` : '';
                 document.getElementById('undertow-status').innerText = `Captured${locationText}`;
                 document.getElementById('undertow-entry').value = '';
             } else {
                 document.getElementById('undertow-status').innerText = 'Error logging.';
-            }  
-
+            }
             btn.disabled = false;
         }
 
-let selectedTools = [];
+        let selectedTools = [];
         let currentToolLogIds = [];
 
         async function buildToolboxButtons() {
             const { data: { user } } = await supabaseClient.auth.getUser();
-            
-            const { data: tools } = await supabaseClient
-                .from('tool_index')
-                .select('name, category')
-                .eq('user_id', user.id)
-                .order('name');
-
-            // Also get tools with no user_id set yet
-            const { data: unassignedTools } = await supabaseClient
-                .from('tool_index')
-                .select('name, category')
-                .is('user_id', null)
-                .order('name');
-
+            const { data: tools } = await supabaseClient.from('tool_index').select('name, category').eq('user_id', user.id).order('name');
+            const { data: unassignedTools } = await supabaseClient.from('tool_index').select('name, category').is('user_id', null).order('name');
             const allTools = [...(tools || []), ...(unassignedTools || [])];
-
-
             const stabilizers = allTools.filter(t => t.category === 'Stabilizer').sort((a, b) => a.name.localeCompare(b.name));
             const regulators = allTools.filter(t => t.category === 'Regulator').sort((a, b) => a.name.localeCompare(b.name));
             const expanders = allTools.filter(t => t.category === 'Expander').sort((a, b) => a.name.localeCompare(b.name));
-
             buildCategoryButtons('stabilizer-buttons', stabilizers);
             buildCategoryButtons('regulator-buttons', regulators);
             buildCategoryButtons('expander-buttons', expanders);
@@ -738,8 +593,7 @@ let selectedTools = [];
                 selectedTools.push(name);
                 if (btn) { btn.style.background = '#2c2c2c'; btn.style.color = '#fff'; }
             }
-            document.getElementById('toolbox-status').innerText = 
-                selectedTools.length > 0 ? `${selectedTools.length} tool${selectedTools.length > 1 ? 's' : ''} selected` : '';
+            document.getElementById('toolbox-status').innerText = selectedTools.length > 0 ? `${selectedTools.length} tool${selectedTools.length > 1 ? 's' : ''} selected` : '';
         }
 
         async function logToolStack() {
@@ -747,65 +601,37 @@ let selectedTools = [];
                 document.getElementById('toolbox-status').innerText = 'Select at least one tool.';
                 return;
             }
-
             const btn = document.getElementById('toolbox-btn');
             if (btn.disabled) return;
             btn.disabled = true;
-
             document.getElementById('toolbox-status').innerText = 'Logging stack...';
             document.getElementById('toolbox-summary').innerText = '';
             document.getElementById('toolbox-feedback-section').style.display = 'none';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
             const note = document.getElementById('toolbox-note').value;
-
-            let latitude = null;
-            let longitude = null;
+            let latitude = null, longitude = null;
             try {
                 const position = await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
                 });
                 latitude = position.coords.latitude;
                 longitude = position.coords.longitude;
-            } catch (geoError) {
-                console.log('Geolocation unavailable:', geoError);
-            }
-
+            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
             const response = await fetch('/api/toolbox', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    toolNames: selectedTools,
-                    note: note || '',
-                    userId: user.id,
-                    latitude: latitude,
-                    longitude: longitude
-                })
+                body: JSON.stringify({ toolNames: selectedTools, note: note || '', userId: user.id, latitude: latitude, longitude: longitude })
             });
-
             const result = await response.json();
-
             if (result.success) {
                 const locationText = result.location ? ` · ${result.location}` : '';
-                document.getElementById('toolbox-status').innerText = 
-                    `${result.toolCount} tool${result.toolCount > 1 ? 's' : ''} logged · ${result.timeOfDay}${locationText}`;
-                
+                document.getElementById('toolbox-status').innerText = `${result.toolCount} tool${result.toolCount > 1 ? 's' : ''} logged · ${result.timeOfDay}${locationText}`;
                 if (result.stackSummary) {
                     document.getElementById('toolbox-summary').innerText = result.stackSummary;
                     document.getElementById('toolbox-feedback-section').style.display = 'block';
                 }
-
-                // Store log IDs for feedback
-                const { data: recentLogs } = await supabaseClient
-                    .from('tool_log')
-                    .select('id')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false })
-                    .limit(selectedTools.length);
-                
+                const { data: recentLogs } = await supabaseClient.from('tool_log').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(selectedTools.length);
                 currentToolLogIds = recentLogs ? recentLogs.map(l => l.id) : [];
-
-                // Reset selections
                 selectedTools.forEach(name => {
                     const btnId = `tool-btn-${name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}`;
                     const toolBtn = document.getElementById(btnId);
@@ -813,41 +639,26 @@ let selectedTools = [];
                 });
                 selectedTools = [];
                 document.getElementById('toolbox-note').value = '';
-
             } else {
                 document.getElementById('toolbox-status').innerText = 'Error logging stack.';
             }
-
             btn.disabled = false;
         }
 
         async function saveToolFeedback() {
             const feedback = document.getElementById('toolbox-feedback').value;
             if (!feedback.trim()) return;
-
             const feedbackBtn = document.getElementById('feedback-btn');
             feedbackBtn.disabled = true;
-
             if (currentToolLogIds.length > 0) {
-                await Promise.all(currentToolLogIds.map(id => 
-                    supabaseClient
-                        .from('tool_log')
-                        .update({ user_feedback: feedback })
-                        .eq('id', id)
-                ));
+                await Promise.all(currentToolLogIds.map(id => supabaseClient.from('tool_log').update({ user_feedback: feedback }).eq('id', id)));
             }
-
             document.getElementById('feedback-status').innerText = 'Note saved.';
             document.getElementById('toolbox-feedback').value = '';
             feedbackBtn.disabled = false;
         }
 
-let archivePage = { summaries: 1, reflections: 1 };
-        const moodColorMap = {
-            1: '#e8e8e8', 2: '#c8d4dc', 3: '#a8bfcf',
-            4: '#7ea8c4', 5: '#5490b8', 6: '#3a78aa',
-            7: '#2560a0', 8: '#1a4d8c', 9: '#0f3875', 10: '#08235e'
-        };
+        let archivePage = { summaries: 1, reflections: 1 };
 
         async function loadArchive(type) {
             archivePage[type] = 1;
@@ -864,13 +675,11 @@ let archivePage = { summaries: 1, reflections: 1 };
 
         async function fetchArchivePage(type, page, append) {
             const { data: { user } } = await supabaseClient.auth.getUser();
-
             const response = await fetch('/api/archive', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, type: type, page: page })
             });
-
             const result = await response.json();
             const container = document.getElementById(`archive-${type}`);
             const moreBtn = document.getElementById(`${type}-more-btn`);
@@ -880,25 +689,19 @@ let archivePage = { summaries: 1, reflections: 1 };
                 if (moreBtn) moreBtn.style.display = 'none';
                 return;
             }
-
             if (!append) container.innerHTML = '';
 
-  if (type === 'summaries') {
+            if (type === 'summaries') {
                 result.data.forEach(s => {
                     const div = document.createElement('div');
                     div.style.cssText = 'border:1px solid #eee; padding:20px; margin-bottom:16px; background:#fff;';
-                    
-                    const periodText = s.period_start && s.period_end 
+                    const periodText = s.period_start && s.period_end
                         ? `${new Date(s.period_start).toLocaleDateString()} — ${new Date(s.period_end).toLocaleDateString()}`
                         : new Date(s.created_at).toLocaleDateString();
-
-                    // Preview — show section 8 forward as highlight
-                    const preview = s.sections 
+                    const preview = s.sections
                         ? (s.sections.section8_forward || s.sections.section1_period || '')
                         : s.summary.substring(0, 200);
-
                     const fullId = `summary-full-${s.id}`;
-
                     let fullHtml = '';
                     if (s.sections) {
                         const sectionLabels = {
@@ -917,11 +720,9 @@ let archivePage = { summaries: 1, reflections: 1 };
                             }
                         });
                     }
-
                     if (s.user_notes) {
                         fullHtml += `<div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:6px; text-transform:uppercase;">Your Notes</p><div style="line-height:1.8; color:#666; font-size:0.9rem; font-style:italic;">${s.user_notes}</div></div>`;
                     }
-
                     div.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
                             <span style="color:#555; font-size:0.9rem;">${periodText}</span>
@@ -935,66 +736,78 @@ let archivePage = { summaries: 1, reflections: 1 };
                 });
             }
 
+            if (type === 'reflections') {
+                result.data.forEach(e => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'border:1px solid #eee; padding:20px; margin-bottom:16px; background:#fff;';
+                    const moodPreDot = e.mood_pre ? `<span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:${moodColorMap[e.mood_pre]}; margin-right:4px; vertical-align:middle;"></span><span style="font-size:0.85rem; color:#555;">${e.mood_pre}</span>` : '';
+                    const moodPostDot = e.mood_post ? `<span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:${moodColorMap[e.mood_post]}; margin-right:4px; vertical-align:middle;"></span><span style="font-size:0.85rem; color:#555;">${e.mood_post}</span>` : '';
+                    const delta = e.mood_pre && e.mood_post ? (e.mood_post - e.mood_pre > 0 ? `+${e.mood_post - e.mood_pre}` : `${e.mood_post - e.mood_pre}`) : '';
+                    const feelingTags = e.feelings && e.feelings.length > 0 ? e.feelings.map(f => `<span style="display:inline-block; background:#f5f5f0; color:#666; font-size:0.75rem; padding:2px 8px; margin:2px; border:1px solid #eee;">${f}</span>`).join('') : '';
+                    const reflectionPreview = e.reflection ? e.reflection.substring(0, 150) + (e.reflection.length > 150 ? '...' : '') : '';
+                    const fullId = `reflection-full-${e.id}`;
+                    const fullContent = `
+                        ${e.prompt ? `<div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Prompt</p><div style="color:#888; font-size:0.9rem; font-style:italic; line-height:1.7;">${e.prompt}</div></div>` : ''}
+                        <div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Entry</p><div style="color:#444; font-size:0.9rem; line-height:1.8;">${e.entry}</div></div>
+                        ${e.reflection ? `<div style="margin-top:12px; padding-top:12px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Full Reflection</p><div style="color:#555; font-size:0.9rem; line-height:1.8;">${e.reflection}</div></div>` : ''}
+                    `;
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                            <span style="color:#555; font-size:0.9rem;">${new Date(e.created_at).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}</span>
+                            <span style="display:flex; align-items:center; gap:8px;">${moodPreDot}${delta ? `<span style="color:#aaa; font-size:0.8rem;">${delta}</span>` : ''}${moodPostDot}</span>
+                        </div>
+                        ${feelingTags ? `<div style="margin-bottom:8px;">${feelingTags}</div>` : ''}
+                        ${reflectionPreview ? `<div style="color:#666; font-size:0.9rem; line-height:1.7; margin-bottom:12px; font-style:italic;">${reflectionPreview}</div>` : ''}
+                        <div id="${fullId}" style="display:none;">${fullContent}</div>
+                        <button onclick="document.getElementById('${fullId}').style.display = document.getElementById('${fullId}').style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === 'Read more' ? 'Collapse' : 'Read more';" style="background:none; border:none; color:#aaa; font-size:0.8rem; cursor:pointer; padding:0; margin-top:0; text-decoration:underline;">Read more</button>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
             if (moreBtn) moreBtn.style.display = result.data.length === 10 ? 'block' : 'none';
         }
 
         async function searchArchive() {
             const query = document.getElementById('archive-search-input').value;
             if (!query.trim()) return;
-
             const btn = document.getElementById('archive-search-btn');
             btn.disabled = true;
             document.getElementById('archive-search-status').innerText = 'Searching...';
             document.getElementById('archive-search-result').innerText = '';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-
             const response = await fetch('/api/archivesearch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, query: query })
             });
-
             const result = await response.json();
-
             if (result.success) {
                 document.getElementById('archive-search-status').innerText = '';
                 document.getElementById('archive-search-result').innerText = result.answer;
             } else {
                 document.getElementById('archive-search-status').innerText = 'Search failed.';
             }
-
             btn.disabled = false;
         }
 
-let currentSummaryId = null;
+        let currentSummaryId = null;
 
         async function generateSummary(days) {
             document.getElementById('summary-status').innerText = 'Generating summary... this may take 20-30 seconds.';
             document.getElementById('summary-output').style.display = 'none';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-
             const periodEnd = new Date().toISOString();
             const periodStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
             const response = await fetch('/api/summary', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.id,
-                    periodStart: periodStart,
-                    periodEnd: periodEnd,
-                    summaryType: 'custom'
-                })
+                body: JSON.stringify({ userId: user.id, periodStart: periodStart, periodEnd: periodEnd, summaryType: 'custom' })
             });
-
             const result = await response.json();
-
             if (result.success) {
                 currentSummaryId = result.summaryId;
                 const s = result.sections;
-
                 document.getElementById('summary-s1').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">The Period</p><div style="line-height:1.8; color:#444;">${s.section1_period}</div>`;
                 document.getElementById('summary-s2').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Mood Arc</p><div style="line-height:1.8; color:#444;">${s.section2_mood}</div>`;
                 document.getElementById('summary-s3').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Reflection Distillation</p><div style="line-height:1.8; color:#444;">${s.section3_reflections}</div>`;
@@ -1003,7 +816,6 @@ let currentSummaryId = null;
                 document.getElementById('summary-s6').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Tool Intelligence</p><div style="line-height:1.8; color:#444;">${s.section6_tools}</div>`;
                 document.getElementById('summary-s7').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Progression Markers</p><div style="line-height:1.8; color:#444;">${s.section7_progression}</div>`;
                 document.getElementById('summary-s8').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Forward</p><div style="line-height:1.8; color:#444;">${s.section8_forward}</div>`;
-
                 document.getElementById('summary-output').style.display = 'block';
                 document.getElementById('summary-status').innerText = `Summary generated · ${days} day${days > 1 ? 's' : ''}`;
             } else {
@@ -1014,56 +826,30 @@ let currentSummaryId = null;
         async function saveSummaryNotes() {
             const notes = document.getElementById('summary-notes').value;
             if (!notes.trim() || !currentSummaryId) return;
-
             const btn = document.getElementById('summary-notes-btn');
             btn.disabled = true;
-
-            const { error } = await supabaseClient
-                .from('summaries')
-                .update({ user_notes: notes })
-                .eq('id', currentSummaryId);
-
+            const { error } = await supabaseClient.from('summaries').update({ user_notes: notes }).eq('id', currentSummaryId);
             if (error) {
                 document.getElementById('summary-notes-status').innerText = 'Error saving notes.';
             } else {
                 document.getElementById('summary-notes-status').innerText = 'Notes saved.';
             }
-
             btn.disabled = false;
         }
-
-       // Initialize mood, feelings, and toolbox UI on load
-        buildMoodButtons();
-        buildMoodPostButtons();
-        buildFeelingsGrid();
-        buildToolboxButtons();
-
-
 
         async function generatePrompt() {
             document.getElementById('prompt-btn').innerText = 'Generating...';
             document.getElementById('prompt-display').innerText = '';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-
-        const feelingsNote = document.getElementById('feelings-note').value;
-
+            const feelingsNote = document.getElementById('feelings-note').value;
             const response = await fetch('/api/prompt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.id,
-                    currentMood: selectedMood,
-                    currentFeelings: selectedFeelings,
-                    feelingsNote: feelingsNote || ''
-                })
-            });  
-
+                body: JSON.stringify({ userId: user.id, currentMood: selectedMood, currentFeelings: selectedFeelings, feelingsNote: feelingsNote || '' })
+            });
             const { prompt, rowId } = await response.json();
-
             currentRowId = rowId;
             promptWasUsed = false;
-
             document.getElementById('prompt-display').innerText = prompt;
             document.getElementById('prompt-btn').innerText = 'Generate Prompt';
             document.getElementById('entry').addEventListener('input', function() {
@@ -1074,44 +860,28 @@ let currentSummaryId = null;
         async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
-
             document.getElementById('reflection').innerText = 'Reflecting...';
-
             const { data: { user } } = await supabaseClient.auth.getUser();
-
-            const { data: recentEntries } = await supabaseClient
-                .from('entries')
-                .select('entry, reflection')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(5);
-
-            const { count } = await supabaseClient
-                .from('entries')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', user.id);
-
+            const { data: recentEntries } = await supabaseClient.from('entries').select('entry, reflection').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5);
+            const { count } = await supabaseClient.from('entries').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
             const response = await fetch('/api/reflect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    entry: entry,
-                    recentEntries: recentEntries || [],
-                    userId: user.id,
-                    totalEntryCount: count || 0,
-                    rowId: currentRowId,
-                    promptUsed: promptWasUsed
-                })
+                body: JSON.stringify({ entry: entry, recentEntries: recentEntries || [], userId: user.id, totalEntryCount: count || 0, rowId: currentRowId, promptUsed: promptWasUsed })
             });
-
-           const { reflection, sessionRowId } = await response.json();
-
+            const { reflection, sessionRowId } = await response.json();
             document.getElementById('reflection').innerText = reflection;
             currentRowId = sessionRowId || currentRowId;
             promptWasUsed = false;
             buildMoodPostButtons();
-    
         }
+
+        // Initialize on load
+        buildMoodButtons();
+        buildMoodPostButtons();
+        buildFeelingsGrid();
+        buildToolboxButtons();
+
     </script>
 </body>
 </html>
