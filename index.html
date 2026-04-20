@@ -181,6 +181,47 @@
             </div>
         </div>
 
+<hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
+
+        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Archive</p>
+
+        <div id="archive-section" style="margin-bottom:32px;">
+
+            <!-- Search -->
+            <div style="margin-bottom:32px;">
+                <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">SEARCH YOUR ARCHIVE</p>
+                <input type="text" id="archive-search-input" placeholder="Ask anything about your journal..." style="width:100%; padding:12px 16px; font-family:Georgia, serif; font-size:0.9rem; border:1px solid #ddd; background:#fff; box-sizing:border-box; margin-bottom:8px;">
+                <button onclick="searchArchive()" id="archive-search-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Search</button>
+                <div id="archive-search-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
+                <div id="archive-search-result" style="margin-top:16px; line-height:1.8; color:#444;"></div>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #eee; margin-bottom:32px;">
+
+            <!-- Summaries -->
+            <div style="margin-bottom:32px;">
+                <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">SUMMARIES</p>
+                <button onclick="loadArchive('summaries')" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0; margin-bottom:16px;">Load Summaries</button>
+                <div id="archive-summaries" style="display:none;"></div>
+                <button onclick="loadMoreArchive('summaries')" id="summaries-more-btn" style="display:none; background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:8px;">Load More</button>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #eee; margin-bottom:32px;">
+
+            <!-- Reflection Loops -->
+            <div style="margin-bottom:32px;">
+                <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">REFLECTION LOOPS</p>
+                <button onclick="loadArchive('reflections')" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0; margin-bottom:16px;">Load Reflections</button>
+                <div id="archive-reflections" style="display:none;"></div>
+                <button onclick="loadMoreArchive('reflections')" id="reflections-more-btn" style="display:none; background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:8px;">Load More</button>
+            </div>
+
+        </div>
+
+        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
+
+        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
+
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
         <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
@@ -803,6 +844,145 @@ let selectedTools = [];
             document.getElementById('feedback-status').innerText = 'Note saved.';
             document.getElementById('toolbox-feedback').value = '';
             feedbackBtn.disabled = false;
+        }
+
+let archivePage = { summaries: 1, reflections: 1 };
+        const moodColorMap = {
+            1: '#e8e8e8', 2: '#c8d4dc', 3: '#a8bfcf',
+            4: '#7ea8c4', 5: '#5490b8', 6: '#3a78aa',
+            7: '#2560a0', 8: '#1a4d8c', 9: '#0f3875', 10: '#08235e'
+        };
+
+        async function loadArchive(type) {
+            archivePage[type] = 1;
+            const container = document.getElementById(`archive-${type}`);
+            container.innerHTML = '<p style="color:#aaa; font-size:0.9rem;">Loading...</p>';
+            container.style.display = 'block';
+            await fetchArchivePage(type, 1, false);
+        }
+
+        async function loadMoreArchive(type) {
+            archivePage[type]++;
+            await fetchArchivePage(type, archivePage[type], true);
+        }
+
+        async function fetchArchivePage(type, page, append) {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            const response = await fetch('/api/archive', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, type: type, page: page })
+            });
+
+            const result = await response.json();
+            const container = document.getElementById(`archive-${type}`);
+            const moreBtn = document.getElementById(`${type}-more-btn`);
+
+            if (!result.success || result.data.length === 0) {
+                if (!append) container.innerHTML = '<p style="color:#aaa; font-size:0.9rem;">No records found.</p>';
+                if (moreBtn) moreBtn.style.display = 'none';
+                return;
+            }
+
+            if (!append) container.innerHTML = '';
+
+            if (type === 'summaries') {
+                result.data.forEach(s => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'border:1px solid #eee; padding:20px; margin-bottom:16px; background:#fff;';
+                    
+                    const periodText = s.period_start && s.period_end 
+                        ? `${new Date(s.period_start).toLocaleDateString()} — ${new Date(s.period_end).toLocaleDateString()}`
+                        : new Date(s.created_at).toLocaleDateString();
+
+                    let sectionsHtml = '';
+                    if (s.sections) {
+                        const sectionLabels = {
+                            section1_period: 'The Period',
+                            section2_mood: 'Mood Arc',
+                            section3_reflections: 'Reflection Distillation',
+                            section4_language: 'Language and Tone Drift',
+                            section5_your_words: 'Your Words',
+                            section6_tools: 'Tool Intelligence',
+                            section7_progression: 'Progression Markers',
+                            section8_forward: 'Forward'
+                        };
+                        Object.entries(sectionLabels).forEach(([key, label]) => {
+                            if (s.sections[key]) {
+                                sectionsHtml += `<div style="margin-bottom:16px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:6px; text-transform:uppercase;">${label}</p><div style="line-height:1.8; color:#444; font-size:0.9rem;">${s.sections[key]}</div></div>`;
+                            }
+                        });
+                    } else {
+                        sectionsHtml = `<div style="line-height:1.8; color:#444; font-size:0.9rem;">${s.summary}</div>`;
+                    }
+
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px;">
+                            <span style="color:#555; font-size:0.9rem;">${periodText}</span>
+                            <span style="color:#aaa; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">${s.summary_type || 'custom'} · ${s.entry_count || 0} entries</span>
+                        </div>
+                        ${sectionsHtml}
+                        ${s.user_notes ? `<div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:6px; text-transform:uppercase;">Your Notes</p><div style="line-height:1.8; color:#666; font-size:0.9rem; font-style:italic;">${s.user_notes}</div></div>` : ''}
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
+            if (type === 'reflections') {
+                result.data.forEach(e => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'border:1px solid #eee; padding:20px; margin-bottom:16px; background:#fff;';
+
+                    const moodPreDot = e.mood_pre ? `<span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:${moodColorMap[e.mood_pre]}; margin-right:4px; vertical-align:middle;"></span><span style="font-size:0.85rem; color:#555;">${e.mood_pre}</span>` : '';
+                    const moodPostDot = e.mood_post ? `<span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:${moodColorMap[e.mood_post]}; margin-right:4px; vertical-align:middle;"></span><span style="font-size:0.85rem; color:#555;">${e.mood_post}</span>` : '';
+                    const delta = e.mood_pre && e.mood_post ? (e.mood_post - e.mood_pre > 0 ? `+${e.mood_post - e.mood_pre}` : `${e.mood_post - e.mood_pre}`) : '';
+                    const feelingTags = e.feelings && e.feelings.length > 0 ? e.feelings.map(f => `<span style="display:inline-block; background:#f5f5f0; color:#666; font-size:0.75rem; padding:2px 8px; margin:2px; border:1px solid #eee;">${f}</span>`).join('') : '';
+
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+                            <span style="color:#555; font-size:0.9rem;">${new Date(e.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</span>
+                            <span style="display:flex; align-items:center; gap:8px;">${moodPreDot}${delta ? `<span style="color:#aaa; font-size:0.8rem;">${delta}</span>` : ''}${moodPostDot}</span>
+                        </div>
+                        ${feelingTags ? `<div style="margin-bottom:12px;">${feelingTags}</div>` : ''}
+                        ${e.prompt ? `<div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Prompt</p><div style="color:#888; font-size:0.9rem; font-style:italic; line-height:1.7;">${e.prompt}</div></div>` : ''}
+                        <div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Entry</p><div style="color:#444; font-size:0.9rem; line-height:1.8;">${e.entry}</div></div>
+                        ${e.reflection ? `<div style="margin-top:12px; padding-top:12px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Reflection</p><div style="color:#555; font-size:0.9rem; line-height:1.8;">${e.reflection}</div></div>` : ''}
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
+            if (moreBtn) moreBtn.style.display = result.data.length === 10 ? 'block' : 'none';
+        }
+
+        async function searchArchive() {
+            const query = document.getElementById('archive-search-input').value;
+            if (!query.trim()) return;
+
+            const btn = document.getElementById('archive-search-btn');
+            btn.disabled = true;
+            document.getElementById('archive-search-status').innerText = 'Searching...';
+            document.getElementById('archive-search-result').innerText = '';
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            const response = await fetch('/api/archivesearch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, query: query })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                document.getElementById('archive-search-status').innerText = '';
+                document.getElementById('archive-search-result').innerText = result.answer;
+            } else {
+                document.getElementById('archive-search-status').innerText = 'Search failed.';
+            }
+
+            btn.disabled = false;
         }
 
 let currentSummaryId = null;
