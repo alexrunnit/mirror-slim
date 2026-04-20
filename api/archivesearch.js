@@ -58,9 +58,14 @@ module.exports = async function handler(req, res) {
     const summaries = summaryResult.data || [];
 
     // Assemble search context
-    const entriesContext = entries.map(e => 
-        `[${new Date(e.created_at).toLocaleDateString()}]\nEntry: ${e.entry}\nReflection: ${e.reflection || 'none'}`
-    ).join('\n\n');
+    const entriesContext = entries.map(e => {
+        const date = new Date(e.created_at);
+        const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const hour = date.getHours();
+        let timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+        return `[${dateStr} at ${timeStr} — ${timeOfDay}]\nEntry: ${e.entry}\nReflection: ${e.reflection || 'none'}`;
+    }).join('\n\n');
 
     const moodContext = moods.map(m => 
         `[${new Date(m.created_at).toLocaleDateString()}] Mood: ${m.score}/10`

@@ -185,6 +185,42 @@
 
         <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Archive</p>
 
+<hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
+
+        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
+
+        <div id="summary-section" style="margin-bottom:32px;">
+            <p style="color:#888; font-size:0.85rem; margin-bottom:16px; letter-spacing:0.05em;">GENERATE SUMMARY</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+                <button onclick="generateSummary(7)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 7 days</button>
+                <button onclick="generateSummary(30)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 30 days</button>
+                <button onclick="generateSummary(60)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 60 days</button>
+                <button onclick="generateSummary(90)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 90 days</button>
+                <button onclick="generateSummary(365)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">All time</button>
+            </div>
+            <div id="summary-status" style="margin-bottom:16px; font-size:0.85rem; color:#888;"></div>
+            <div id="summary-output" style="display:none;">
+                <div id="summary-s1" style="margin-bottom:32px;"></div>
+                <div id="summary-s2" style="margin-bottom:32px;"></div>
+                <div id="summary-s3" style="margin-bottom:32px;"></div>
+                <div id="summary-s4" style="margin-bottom:32px;"></div>
+                <div id="summary-s5" style="margin-bottom:32px;"></div>
+                <div id="summary-s6" style="margin-bottom:32px;"></div>
+                <div id="summary-s7" style="margin-bottom:32px;"></div>
+                <div id="summary-s8" style="margin-bottom:32px;"></div>
+                <div style="margin-top:32px;">
+                    <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">YOUR NOTES</p>
+                    <textarea id="summary-notes" placeholder="Your response to this summary..." style="height:120px; font-size:0.9rem; margin-bottom:8px;"></textarea>
+                    <button onclick="saveSummaryNotes()" id="summary-notes-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd; margin-top:0;">Save Notes</button>
+                    <div id="summary-notes-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
+                </div>
+            </div>
+        </div>
+
+        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
+
+        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Archive</p>
+
         <div id="archive-section" style="margin-bottom:32px;">
 
             <!-- Search -->
@@ -193,7 +229,7 @@
                 <input type="text" id="archive-search-input" placeholder="Ask anything about your journal..." style="width:100%; padding:12px 16px; font-family:Georgia, serif; font-size:0.9rem; border:1px solid #ddd; background:#fff; box-sizing:border-box; margin-bottom:8px;">
                 <button onclick="searchArchive()" id="archive-search-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Search</button>
                 <div id="archive-search-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-                <div id="archive-search-result" style="margin-top:16px; line-height:1.8; color:#444;"></div>
+                <div id="archive-search-result" style="margin-top:16px; line-height:1.8; color:#444; white-space:pre-wrap;"></div>
             </div>
 
             <hr style="border:none; border-top:1px solid #eee; margin-bottom:32px;">
@@ -218,47 +254,7 @@
 
         </div>
 
-        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
-
-        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
-
-        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
-
-        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
-
-        <div id="summary-section" style="margin-bottom:32px;">
-            <p style="color:#888; font-size:0.85rem; margin-bottom:16px; letter-spacing:0.05em;">GENERATE SUMMARY</p>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
-                <button onclick="generateSummary(7)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 7 days</button>
-                <button onclick="generateSummary(30)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 30 days</button>
-                <button onclick="generateSummary(60)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 60 days</button>
-                <button onclick="generateSummary(90)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">Last 90 days</button>
-                <button onclick="generateSummary(365)" style="background:#f5f5f0; color:#555; border:1px solid #ddd; font-size:0.8rem; padding:6px 12px; margin-top:0;">All time</button>
-            </div>
-            <div id="summary-status" style="margin-bottom:16px; font-size:0.85rem; color:#888;"></div>
-
-            <div id="summary-output" style="display:none;">
-                <div id="summary-s1" style="margin-bottom:32px;"></div>
-                <div id="summary-s2" style="margin-bottom:32px;"></div>
-                <div id="summary-s3" style="margin-bottom:32px;"></div>
-                <div id="summary-s4" style="margin-bottom:32px;"></div>
-                <div id="summary-s5" style="margin-bottom:32px;"></div>
-                <div id="summary-s6" style="margin-bottom:32px;"></div>
-                <div id="summary-s7" style="margin-bottom:32px;"></div>
-                <div id="summary-s8" style="margin-bottom:32px;"></div>
-
-                <div style="margin-top:32px;">
-                    <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">YOUR NOTES</p>
-                    <textarea id="summary-notes" placeholder="Your response to this summary..." style="height:120px; font-size:0.9rem; margin-bottom:8px;"></textarea>
-                    <button onclick="saveSummaryNotes()" id="summary-notes-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd; margin-top:0;">Save Notes</button>
-                    <div id="summary-notes-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-                </div>
-            </div>
-        </div>
-
     </div>
-
-    <script>
 
 
         const supabaseClient = window.supabase.createClient(
@@ -887,7 +883,7 @@ let archivePage = { summaries: 1, reflections: 1 };
 
             if (!append) container.innerHTML = '';
 
-            if (type === 'summaries') {
+  if (type === 'summaries') {
                 result.data.forEach(s => {
                     const div = document.createElement('div');
                     div.style.cssText = 'border:1px solid #eee; padding:20px; margin-bottom:16px; background:#fff;';
@@ -896,7 +892,14 @@ let archivePage = { summaries: 1, reflections: 1 };
                         ? `${new Date(s.period_start).toLocaleDateString()} — ${new Date(s.period_end).toLocaleDateString()}`
                         : new Date(s.created_at).toLocaleDateString();
 
-                    let sectionsHtml = '';
+                    // Preview — show section 8 forward as highlight
+                    const preview = s.sections 
+                        ? (s.sections.section8_forward || s.sections.section1_period || '')
+                        : s.summary.substring(0, 200);
+
+                    const fullId = `summary-full-${s.id}`;
+
+                    let fullHtml = '';
                     if (s.sections) {
                         const sectionLabels = {
                             section1_period: 'The Period',
@@ -910,44 +913,23 @@ let archivePage = { summaries: 1, reflections: 1 };
                         };
                         Object.entries(sectionLabels).forEach(([key, label]) => {
                             if (s.sections[key]) {
-                                sectionsHtml += `<div style="margin-bottom:16px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:6px; text-transform:uppercase;">${label}</p><div style="line-height:1.8; color:#444; font-size:0.9rem;">${s.sections[key]}</div></div>`;
+                                fullHtml += `<div style="margin-bottom:16px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:6px; text-transform:uppercase;">${label}</p><div style="line-height:1.8; color:#444; font-size:0.9rem;">${s.sections[key]}</div></div>`;
                             }
                         });
-                    } else {
-                        sectionsHtml = `<div style="line-height:1.8; color:#444; font-size:0.9rem;">${s.summary}</div>`;
+                    }
+
+                    if (s.user_notes) {
+                        fullHtml += `<div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:6px; text-transform:uppercase;">Your Notes</p><div style="line-height:1.8; color:#666; font-size:0.9rem; font-style:italic;">${s.user_notes}</div></div>`;
                     }
 
                     div.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
                             <span style="color:#555; font-size:0.9rem;">${periodText}</span>
                             <span style="color:#aaa; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">${s.summary_type || 'custom'} · ${s.entry_count || 0} entries</span>
                         </div>
-                        ${sectionsHtml}
-                        ${s.user_notes ? `<div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:6px; text-transform:uppercase;">Your Notes</p><div style="line-height:1.8; color:#666; font-size:0.9rem; font-style:italic;">${s.user_notes}</div></div>` : ''}
-                    `;
-                    container.appendChild(div);
-                });
-            }
-
-            if (type === 'reflections') {
-                result.data.forEach(e => {
-                    const div = document.createElement('div');
-                    div.style.cssText = 'border:1px solid #eee; padding:20px; margin-bottom:16px; background:#fff;';
-
-                    const moodPreDot = e.mood_pre ? `<span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:${moodColorMap[e.mood_pre]}; margin-right:4px; vertical-align:middle;"></span><span style="font-size:0.85rem; color:#555;">${e.mood_pre}</span>` : '';
-                    const moodPostDot = e.mood_post ? `<span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:${moodColorMap[e.mood_post]}; margin-right:4px; vertical-align:middle;"></span><span style="font-size:0.85rem; color:#555;">${e.mood_post}</span>` : '';
-                    const delta = e.mood_pre && e.mood_post ? (e.mood_post - e.mood_pre > 0 ? `+${e.mood_post - e.mood_pre}` : `${e.mood_post - e.mood_pre}`) : '';
-                    const feelingTags = e.feelings && e.feelings.length > 0 ? e.feelings.map(f => `<span style="display:inline-block; background:#f5f5f0; color:#666; font-size:0.75rem; padding:2px 8px; margin:2px; border:1px solid #eee;">${f}</span>`).join('') : '';
-
-                    div.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
-                            <span style="color:#555; font-size:0.9rem;">${new Date(e.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</span>
-                            <span style="display:flex; align-items:center; gap:8px;">${moodPreDot}${delta ? `<span style="color:#aaa; font-size:0.8rem;">${delta}</span>` : ''}${moodPostDot}</span>
-                        </div>
-                        ${feelingTags ? `<div style="margin-bottom:12px;">${feelingTags}</div>` : ''}
-                        ${e.prompt ? `<div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Prompt</p><div style="color:#888; font-size:0.9rem; font-style:italic; line-height:1.7;">${e.prompt}</div></div>` : ''}
-                        <div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Entry</p><div style="color:#444; font-size:0.9rem; line-height:1.8;">${e.entry}</div></div>
-                        ${e.reflection ? `<div style="margin-top:12px; padding-top:12px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Reflection</p><div style="color:#555; font-size:0.9rem; line-height:1.8;">${e.reflection}</div></div>` : ''}
+                        <div style="color:#666; font-size:0.9rem; line-height:1.7; margin-bottom:12px;">${preview}</div>
+                        <div id="${fullId}" style="display:none;">${fullHtml}</div>
+                        <button onclick="document.getElementById('${fullId}').style.display = document.getElementById('${fullId}').style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === 'Read more' ? 'Collapse' : 'Read more';" style="background:none; border:none; color:#aaa; font-size:0.8rem; cursor:pointer; padding:0; margin-top:0; text-decoration:underline;">Read more</button>
                     `;
                     container.appendChild(div);
                 });
