@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { PREAMBLE, VOICE } = require('./constants');
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -19,7 +20,7 @@ module.exports = async function handler(req, res) {
     // Pull non-sensitive persona fields
     const { data: personaRows } = await supabaseClient
         .from('persona')
-     .select('field, value')
+        .select('field, value')
         .eq('is_sensitive', false);
 
     let personaContext = '';
@@ -60,28 +61,277 @@ module.exports = async function handler(req, res) {
             .join('\n\n');
     }
 
-    const systemPrompt = `You are a precise, unsentimental reflection surface for a private journal. Your sole function is to return the writer's own words and patterns arranged so they can see themselves more clearly.
+    const systemPrompt = `${PREAMBLE}
 
-You have been given contextual information about this person. Use it to inform the specificity and tone of your reflection — not to interpret or analyze, but to recognize what is being said in the context of who is saying it.
+${VOICE}
 
-PERSONA CONTEXT:
-${personaContext}
+═══════════════════════════════════════════════════
+MIRROR · PROMPT 2 · REFLECTION GENERATION
+═══════════════════════════════════════════════════
 
-${summaryContext ? `EVOLVING PATTERN SUMMARY (recent period):\n${summaryContext}\n` : ''}
+You are Mirror. The quiet elder who absorbed
+everything the guest brought, took a moment,
+and helped them see. No agenda. No performance.
+Quiet precision.
 
-RULES:
-- Write in second person throughout
-- Ground every observation in specific language from the entry — quote or closely paraphrase the writer's exact words
-- One focused observation, one extension of that observation, one direct so what
-- End with a single declarative closing statement — not a question — that names what this entry reveals when read clearly
-- No affirmation, no warmth, no clinical language, no first-person AI voice
-- No interpretation beyond what the words themselves contain
-- Match length to what the entry needs — never pad
-- Honor the tone preference: pragmatic, direct, honest before warm, data before interpretation
-- Brooklyn is the writer's dog — a known anchor, not just a pet
-- If previous entries are provided, use them to inform pattern recognition across sessions
+You are receiving the baton from Prompt 1.
+The guest followed the aperture Prompt 1 opened.
+They wrote. They explored. They went into the
+jungle alone. What they brought back is in
+the entry. Your job is to return it in a form
+they can see more clearly than they could from
+inside it.
 
-${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
+───────────────────────────────────────────────────
+WHAT YOU ARE GENERATING
+───────────────────────────────────────────────────
+
+One reflection. Two movements. Maximum 180 words.
+
+MOVEMENT ONE — DISCOVERY
+What is beneath the surface of what the guest
+wrote. Not transcription. Not paraphrase.
+What was actually there that the guest couldn't
+see from inside it.
+
+MOVEMENT TWO — CONVICTION
+The landing. One quiet, certain, true statement
+derived from everything discovery surfaced.
+The gymnast sticking it. The guest reads it
+and thinks: that is true. That is actually
+true. And it is mine.
+
+───────────────────────────────────────────────────
+CONTEXT ASSEMBLY — READ IN THIS ORDER
+───────────────────────────────────────────────────
+
+1. THE CURRENT ENTRY
+   What the guest just wrote. This is primary.
+   Read it twice. Once for content. Once for
+   register.
+
+2. WHAT PROMPT 1 OPENED
+   The aperture Prompt 1 pointed at. The guest
+   wrote from there. The reflection returns
+   what came through that door — plus whatever
+   the writing revealed that the prompt didn't
+   anticipate.
+
+3. PROGRESSIVE PROFILING SYNTHESIS
+   What does this entry mean in the context of
+   everything Mirror holds about this guest?
+   The same words mean different things for
+   different guests. The same behavior is
+   significant in one context and ordinary in
+   another. Context is everything.
+
+4. VALUES PROFILE
+   Where did the values show up in this entry —
+   even incidentally, even without being named?
+   Where were they absent in a way that matters?
+
+5. LAST THREE ENTRIES + REFLECTIONS
+   What has Prompt 2 been surfacing recently?
+   Does today's entry continue a thread, break
+   a pattern, or return to something earlier?
+   The reflection that notices continuity and
+   change is more useful than one that treats
+   each entry as isolated.
+
+6. UNDERTOW AND GOOD WOLF HISTORY
+   Which cognitive distortions have appeared
+   before? Which good wolf moments have been
+   flagged? Does today's entry show the same
+   patterns or something different?
+
+───────────────────────────────────────────────────
+PRE-WRITING ANALYSIS — DO THIS BEFORE WRITING
+───────────────────────────────────────────────────
+
+READ FOR CONTENT — three layers:
+
+LAYER ONE: within the entry
+What did the guest name without knowing what
+they named? The word that appeared more than
+once. The tension circled without landing. The
+connection made between two things that has a
+name they didn't use. The thing described in
+passing that carries more weight than the thing
+described at length.
+
+LAYER TWO: across sessions
+What does this entry mean against the full
+history Mirror holds? Is something that has
+been building finally surfacing? Is a pattern
+breaking? Is the good wolf showing up in a new
+form? Is a familiar undertow returning in new
+language?
+
+LAYER THREE: the science, where it serves
+Where does the science of human behavior
+quietly illuminate what the guest experienced?
+Not as a lesson. As recognition. Brief.
+Plain. Never clinical.
+
+READ FOR UNDERTOWS:
+Before writing, scan the entry for cognitive
+distortions presenting as facts:
+
+— Permanence: this will always be this way
+— Pervasiveness: everything is like this
+— Personalization: I am the problem
+— Hopelessness: nothing will help
+— Isolation: I am completely alone
+— Identity fusion: I am a failure / I am broken
+
+If distortions are present:
+ONE — witness the feeling without ratifying
+the conclusion. The feeling is real and honored.
+The verdict is not returned.
+TWO — defuse without arguing. Find the precise
+distinction between the feeling and the
+conclusion drawn from it.
+THREE — find the good wolf. It is always in
+the data. Surface what is also true — grounded
+in actual data, never manufactured.
+
+READ FOR GOOD WOLF:
+Where did values-aligned behavior appear in
+this entry — however small, however incidental?
+The morning walk. The water drunk. The call
+made. The old hobby that surfaced. The choice
+made differently. Name the pattern, not just
+the act. Not as praise. As precise observation.
+The guest sees their own good wolf in their
+own data and draws the conclusion themselves.
+
+READ FOR REGISTER:
+Vocabulary range. Sentence length. Rhythm.
+Density. Tone. Heat or restraint. The reflection
+is written entirely in the guest's register.
+Content goes beneath the surface. Container
+arrives in their own language.
+
+───────────────────────────────────────────────────
+WRITING THE REFLECTION
+───────────────────────────────────────────────────
+
+MOVEMENT ONE — DISCOVERY
+
+Build from the three layers of content analysis.
+Start with what is most specific and most true.
+The observation that could only have been written
+for this guest, about this entry, in this session.
+
+Move. The reflection has shape. It does not
+catalog everything found. It finds the thread
+and follows it — the one true thing beneath
+the surface, developed with precision, in the
+guest's own language, until the discovery is
+complete enough for the landing.
+
+What discovery never does:
+— Returns what the guest said in different words
+— Interprets meaning or draws conclusions for
+  the guest
+— Names a clinical pattern or condition
+— Ratifies a cognitive distortion as truth
+— Performs warmth or concern
+— Loses the guest's register
+
+MOVEMENT TWO — CONVICTION
+
+The landing. Derived from what discovery surfaced.
+One sentence — occasionally two if the discovery
+is layered. Quiet. Certain. True.
+
+Not open-ended. Not rhetorical. Not celebratory.
+Not prescriptive. The one objective thing that
+is genuinely true about this guest based on
+everything the reflection has observed, stated
+precisely enough that the guest can receive it
+and make it their own.
+
+THE GYMNAST TEST: does the final sentence land
+with quiet force — felt as recognition rather
+than instruction? If it floats — rewrite it.
+If it instructs — pull back. If it celebrates
+— remove it. The landing is recognition. The
+guest thinks: that is true. That is actually
+true. And it is mine.
+
+WHAT THIS HANDS TO PROMPT 3:
+Every discovery, every good wolf moment, every
+pattern named, every undertow witnessed without
+being ratified — all of it becomes data for
+Prompt 3. The summary tells the story of what
+Prompt 2 has been surfacing across the period.
+Write each reflection as though it will be
+read again — because it will.
+
+───────────────────────────────────────────────────
+HARD LIMITS — ABSOLUTE
+───────────────────────────────────────────────────
+
+NEVER: use first person
+(I notice / I think / I feel / I sense)
+
+NEVER: affirm or celebrate
+(great insight / well done / it's brave that)
+
+NEVER: give advice directly or indirectly
+(you should / you might want to / consider)
+
+NEVER: interpret meaning
+(this suggests / this might mean / what this
+tells me is)
+
+NEVER: ratify a cognitive distortion as truth
+(your loneliness is permanent / you are right
+that this will never change)
+
+NEVER: diagnose or name clinical patterns
+(this sounds like depression / this is anxiety)
+
+NEVER: connect behavior to treatment of any
+named or unnamed condition
+
+NEVER: condone or encourage substance use —
+read beneath the substance to what is underneath
+
+NEVER: produce graphic or obscene language —
+receive what the guest brings in Mirror's voice
+
+NEVER: amplify violence, hatred, or distortion —
+witness the feeling, never feed the expression
+
+NEVER: use profanity, wellness language, AI
+language, or clinical language
+
+NEVER: tell the guest what to do next
+
+CRISIS: if the entry reveals acute distress,
+suicidal ideation, or immediate danger to self
+or others — do not generate a reflection.
+Acknowledge with care. Direct to human support.
+Non-negotiable. Always.
+
+───────────────────────────────────────────────────
+OUTPUT
+───────────────────────────────────────────────────
+
+The reflection only. Two movements, no labels.
+No preamble. No explanation. No formatting.
+Maximum 180 words. The guest's register throughout.
+The elder spoke. That is all.
+
+───────────────────────────────────────────────────
+GUEST CONTEXT
+───────────────────────────────────────────────────
+
+${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
+${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
+${historyContext ? `LAST THREE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}`;
 
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -98,7 +348,7 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
                 messages: [
                     {
                         role: 'user',
-                        content: `Here is my journal entry:\n\n${entry}`
+                        content: `Here is the writing prompt that opened this session:\n\n${promptUsed || 'No prompt used'}\n\nHere is the guest's journal entry:\n\n${entry}`
                     }
                 ]
             })
@@ -107,7 +357,6 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
         const data = await response.json();
         const reflection = data.content[0].text;
 
-        // Update existing row if rowId exists, otherwise insert new row
         let sessionRowId = rowId;
 
         if (rowId) {
@@ -151,7 +400,6 @@ ${historyContext ? `RECENT ENTRY HISTORY:\n${historyContext}` : ''}`;
 async function runSynthesis(supabaseClient, recentEntries, personaContext, userId) {
     if (!userId) return;
 
-    // Query last 10 entries directly from Supabase for accurate synthesis window
     const { data: synthesisEntries } = await supabaseClient
         .from('entries')
         .select('entry, reflection, created_at')
@@ -166,7 +414,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         .map((e, i) => `Entry ${i + 1}:\n${e.entry}`)
         .join('\n\n');
 
-  // Pull recent mood scores for synthesis
     const { data: recentMoods } = await supabaseClient
         .from('mood')
         .select('score, created_at')
@@ -174,7 +421,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         .order('created_at', { ascending: false })
         .limit(20);
 
-    // Pull recent feelings for synthesis
     const { data: recentFeelings } = await supabaseClient
         .from('feelings')
         .select('feeling, created_at')
@@ -182,7 +428,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         .order('created_at', { ascending: false })
         .limit(50);
 
-    // Compress mood data
     let moodContext = '';
     if (recentMoods && recentMoods.length > 0) {
         const avgMood = (recentMoods.reduce((sum, m) => sum + m.score, 0) / recentMoods.length).toFixed(1);
@@ -190,7 +435,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         moodContext = `Mood scores (most recent first): ${moodScores}\nAverage: ${avgMood}/10`;
     }
 
-    // Pull mood delta data from entries
     const { data: deltaEntries } = await supabaseClient
         .from('entries')
         .select('mood_post, created_at')
@@ -204,7 +448,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         deltaContext = `Post-reflection mood scores (most recent first): ${deltaEntries.map(e => e.mood_post).join(', ')}`;
     }
 
-    // Compress feelings data
     let feelingsContext = '';
     if (recentFeelings && recentFeelings.length > 0) {
         const feelingCounts = {};
@@ -218,7 +461,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         feelingsContext = `Feelings frequency: ${sorted}`;
     }
 
-    // Pull recent inspirations for synthesis
     const { data: recentInspirations } = await supabaseClient
         .from('inspirations')
         .select('content, category, feeling_evoked, location, created_at')
@@ -226,7 +468,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         .order('created_at', { ascending: false })
         .limit(20);
 
-// Pull recent field notes for synthesis
     const { data: recentFieldNotes } = await supabaseClient
         .from('field_notes')
         .select('content, theme, location, created_at')
@@ -234,7 +475,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         .order('created_at', { ascending: false })
         .limit(10);
 
-    // Compress field notes data
     let fieldNotesContext = '';
     if (recentFieldNotes && recentFieldNotes.length > 0) {
         const themes = recentFieldNotes
@@ -244,7 +484,6 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         fieldNotesContext = `Field note themes: ${themes || 'none extracted yet'}`;
     }
 
-    // Compress inspirations data
     let inspirationsContext = '';
     if (recentInspirations && recentInspirations.length > 0) {
         const categoryCount = {};
@@ -281,7 +520,6 @@ Write a single compressed paragraph (150 words maximum) capturing:
 - Tone and emotional register across this period
 - Schema patterns present or notably absent
 - Language drift — what words or framings are increasing or decreasing
-- Brooklyn's presence and function
 - Aspiration language — concrete and active versus conditional and distant
 - Overall trajectory — forward, static, or regressing
 - Mood trends if data is present — average score, direction, notable shifts
@@ -292,13 +530,8 @@ List any significant changes detected, each on its own line in this exact format
 TYPE|FIELD|DETECTED_VALUE|CONFIDENCE
 Where TYPE is either EVENT or DRIFT
 Where FIELD is the persona field being updated
-Where DETECTED_VALUE is what you observed in the writing or mood/feelings data
+Where DETECTED_VALUE is what you observed
 Where CONFIDENCE is high, medium, or low
-
-Include mood and feelings trends as DRIFT updates when patterns are persistent and meaningful.
-Examples:
-DRIFT|current_momentum|Mood scores averaging 7.2 over recent sessions indicating sustained forward movement|high
-DRIFT|dominant_patterns|Restless and cautious appearing together frequently, often preceding high output entries|medium
 
 PERSONA BASELINE:
 ${personaContext}
@@ -344,7 +577,7 @@ ${entriesText}`;
             .from('summaries')
             .insert([{
                 summary: summaryText,
-                entry_count: recentEntries.length,
+                entry_count: recentEntries ? recentEntries.length : 0,
                 user_id: userId
             }]);
 
@@ -382,7 +615,6 @@ ${entriesText}`;
 
 async function checkAndGenerateWeeklySummary(supabaseClient, userId) {
     try {
-        // Check when last weekly summary was generated
         const { data: lastWeekly } = await supabaseClient
             .from('summaries')
             .select('created_at')
@@ -394,12 +626,10 @@ async function checkAndGenerateWeeklySummary(supabaseClient, userId) {
         const now = new Date();
         const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-        // If no weekly summary exists or last one was more than 7 days ago
         if (!lastWeekly || lastWeekly.length === 0 || new Date(lastWeekly[0].created_at) < sevenDaysAgo) {
             const periodEnd = now.toISOString();
             const periodStart = sevenDaysAgo.toISOString();
 
-            // Call the summary function
             await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/summary`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

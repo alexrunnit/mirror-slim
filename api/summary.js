@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { PREAMBLE, VOICE } = require('./constants');
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -38,7 +39,7 @@ module.exports = async function handler(req, res) {
         supabaseClient.from('undertow_log').select('undertow_name, trigger_note, pattern_tag, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('persona').select('field, value').eq('is_sensitive', false),
         supabaseClient.from('undertow_index').select('name, known_contradictions, weakening_indicators').eq('is_sensitive', true),
-        supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(1)
+        supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(3)
     ]);
 
     const entries = entriesResult.data || [];
@@ -50,12 +51,12 @@ module.exports = async function handler(req, res) {
     const undertowLogs = undertowLogResult.data || [];
     const persona = personaResult.data || [];
     const undertowIndex = undertowIndexResult.data || [];
-    const previousSummary = previousSummaryResult.data?.[0] || null;
+    const previousSummaries = previousSummaryResult.data || [];
 
     // Compress data for context
     const personaText = persona.map(p => `${p.field}: ${p.value}`).join('\n');
 
-    const entriesText = entries.map((e, i) => 
+    const entriesText = entries.map((e, i) =>
         `Entry ${i + 1} (${new Date(e.created_at).toLocaleDateString()}):\n${e.entry}\nReflection: ${e.reflection || 'none'}`
     ).join('\n\n');
 
@@ -81,77 +82,229 @@ module.exports = async function handler(req, res) {
 
     const inspirationText = inspirations.map(i => `${i.content}${i.feeling_evoked ? ` (evoked: ${i.feeling_evoked})` : ''}${i.location ? ` — ${i.location}` : ''}`).join('\n');
     const fieldNoteText = fieldNotes.map(f => `${f.content}${f.location ? ` — ${f.location}` : ''}`).join('\n');
-
-    const undertowIndexText = undertowIndex.map(u => 
+    const undertowIndexText = undertowIndex.map(u =>
         `${u.name}:\nKnown contradictions: ${u.known_contradictions}\nWeakening indicators: ${u.weakening_indicators}`
     ).join('\n\n');
 
+    const previousSummariesText = previousSummaries.length > 0
+        ? previousSummaries.map((s, i) => `Previous Summary ${i + 1} (${new Date(s.period_start).toLocaleDateString()} — ${new Date(s.period_end).toLocaleDateString()}):\n${s.summary}`).join('\n\n')
+        : '';
+
     const periodDays = Math.round((new Date(periodEnd) - new Date(periodStart)) / (1000 * 60 * 60 * 24));
 
-    // Generate all sections in parallel
-    const sectionPrompts = [
-        // Section 1 - The Period
-        `Write Section 1 of a personal growth summary called "The Period." One short paragraph. State: date range from ${new Date(periodStart).toLocaleDateString()} to ${new Date(periodEnd).toLocaleDateString()}, ${periodDays} days, ${entries.length} journal entries written. Factual, no interpretation. Under 50 words.`,
+    const summarySystemPrompt = `${PREAMBLE}
 
-        // Section 2 - Mood Arc and Feelings
-        `Write Section 2 of a personal growth summary called "Mood Arc." Data: Pre-session mood average: ${avgMoodPre || 'insufficient data'}/10. Post-session mood average: ${avgMoodPost || 'insufficient data'}/10. Average delta per session: ${avgDelta || 'insufficient data'} points. Mood scores across period: ${moodScores.join(', ') || 'none'}. Top feelings logged: ${topFeelings || 'none'}. Write 2-3 precise paragraphs covering mood trajectory, the delta pattern, and the feeling landscape. Name what the numbers reveal about baseline and regulation. No clinical language. No affirmation. Under 120 words.`,
+${VOICE}
 
-        // Section 3 - Reflection Distillation
-        `Write Section 3 of a personal growth summary called "Reflection Distillation." Read these journal entries and their reflections and distill what Mirror saw repeatedly across the period — the themes that recurred, the patterns that were named, the observations that appeared more than once. Do not quote entries. Synthesize what the reflections collectively revealed about who was writing them. 2-3 paragraphs, under 150 words.\n\nENTRIES AND REFLECTIONS:\n${entriesText.substring(0, 3000)}`,
+═══════════════════════════════════════════════════
+MIRROR · PROMPT 3 · SUMMARY GENERATION
+═══════════════════════════════════════════════════
 
-        // Section 4 - Language and Tone Drift
-        `Write Section 4 of a personal growth summary called "Language and Tone Drift." Analyze the full body of writing below — journal entries, inspirations, field notes, and undertow entries — for shifts in language patterns. Identify: conditional versus declarative language frequency, past versus future orientation, recurring phrases and sentiments, what themes are surfacing in inspirations, what field notes reveal about environmental awareness, undertow breakdown (${undertowSummary || 'none logged'}). 2-3 paragraphs, under 150 words.\n\nJOURNAL ENTRIES:\n${entries.map(e => e.entry).join('\n\n').substring(0, 2000)}\n\nINSPIRATIONS:\n${inspirationText.substring(0, 500)}\n\nFIELD NOTES:\n${fieldNoteText.substring(0, 500)}\n\nUNDERTOW ENTRIES:\n${undertowPatterns.substring(0, 500)}`,
+You are Mirror. The witness who has held every
+session, every word, every feeling, every small
+move across this entire period. Now you return
+the story of what actually happened — not as
+a report, but as the clearest possible account
+of a life in motion.
 
-        // Section 5 - Your Words
-        `Write Section 5 of a personal growth summary called "Your Words." Read these journal entries and identify 2-3 sentences or short passages where the writer's language was most precise, most self-aware, or most clearly pointed toward something they hadn't previously named. Return them exactly as written in quotation marks, each on its own line, with one sentence of context explaining why this moment stood out. No motivational framing. Just the moments where the writing was sharpest.\n\nENTRIES:\n${entries.map(e => e.entry).join('\n\n').substring(0, 3000)}`,
+You are receiving the baton from every Prompt 1
+and every Prompt 2 across the period. The apertures
+opened. The discoveries made. The landings that
+accumulated. The good wolf moments flagged.
+The undertows witnessed. All of it is here.
+Your job is to find the story within it and
+return it in a form the guest can see, stand on,
+and carry forward into the next period.
 
-        // Section 6 - Tool Intelligence
-        `Write Section 6 of a personal growth summary called "Tool Intelligence." Data: Most used tools: ${topTools || 'none logged'}. Stack summaries from the period: ${stackSummaries.substring(0, 1000) || 'none'}. Write 2-3 paragraphs covering: which tools dominated, what the stacks collectively produced, any patterns in tool usage relative to time of day or undertow activity, and one observation about what the tool data suggests about how this person is regulating, stabilizing, and expanding. Under 150 words.`,
+───────────────────────────────────────────────────
+WHAT YOU ARE GENERATING
+───────────────────────────────────────────────────
 
-        // Section 7 - Progression Markers
-        `Write Section 7 of a personal growth summary called "Progression Markers." Compare evidence from this period against the documented undertow weakening indicators and known contradictions below. Name which weakening indicators are showing evidence of activation. Name which known contradictions are being lived out. Note any transformation trends emerging — not just present versus baseline, but trajectory and velocity of change. Where is momentum building? Where is it stalled? Be specific and honest. 2-3 paragraphs, under 150 words.\n\nUNDERTOW INDEX:\n${undertowIndexText.substring(0, 1500)}\n\nPERIOD ENTRIES:\n${entries.map(e => e.entry).join('\n\n').substring(0, 2000)}\n\nPERSONA BASELINE:\n${personaText.substring(0, 1000)}`,
+One summary. Prose throughout. No headers.
+No bullets. No lists. Approximately one page.
+Readable in under two minutes.
 
-        // Section 8 - Forward
-        `Write Section 8 of a personal growth summary called "Forward." Based on all the data from this period, name 2-3 concrete near-term observations about what the evidence points toward. Not goals. Not advice. Not motivation. Just what the data suggests is ready to be acted on or paid attention to. One sentence each. Under 60 words total.`
-    ];
+Two movements:
+
+THE ACTION SECTION — two thirds to three quarters
+The story of what actually happened. The movements.
+The patterns. The exceptions to the dominant
+feeling. The small repairs. The good wolf evidence.
+The values showing up in behavior. Pragmatic.
+Specific. Grounded entirely in real data.
+
+THE EVOLUTION SECTION — one quarter to one third
+What has actually shifted across this period.
+Derived from the action evidence. Named honestly.
+The challenge acknowledged. The good wolf returned
+with the full weight of the period behind it.
+Ended with the strongest possible conviction
+landing — the exclamation mark that makes the
+guest want to continue.
+
+───────────────────────────────────────────────────
+CONTEXT ASSEMBLY — READ IN THIS ORDER
+───────────────────────────────────────────────────
+
+1. ALL PREVIOUS SUMMARIES (if they exist)
+   This period does not exist in isolation.
+   The guest's story is continuous. What moved
+   in previous periods is context for what moved
+   in this one. Read every previous summary
+   before reading anything from the current period.
+   The long arc is always present.
+
+2. ALL ENTRIES AND REFLECTIONS IN THE PERIOD
+   Every entry. Every reflection Prompt 2 returned.
+   These are the raw material of the story.
+
+3. ALL FEELINGS GRID DATA IN THE PERIOD
+   Every selection. Every context note. Mapped
+   across the full period — not as statistics
+   but as a pattern with shape and movement.
+
+4. PROGRESSIVE PROFILING SYNTHESIS
+   The compressed portrait of this guest across
+   their full time with Mirror. Who they are
+   beyond this period. What has been building.
+
+5. VALUES PROFILE
+   The compass. What this guest identified as
+   genuinely mattering. The good wolf's nature.
+
+6. FLAGGED LANGUAGE
+   The guest's own most precise, honest, or
+   revealing phrases from across the period.
+   Their exact words. Not paraphrased. Held
+   for return in the guest's own words section.
+
+7. SESSION FREQUENCY AND PATTERN
+   How often the guest came. When they came.
+   What the pattern of showing up reveals.
+
+───────────────────────────────────────────────────
+PRE-WRITING ANALYSIS — COMPLETE BEFORE WRITING
+───────────────────────────────────────────────────
+
+STEP ONE — THE DOMINANT PATTERN
+Across all sessions: which feelings dominated?
+Which themes recurred? Which undertows appeared
+most often? Which column — Down, Neutral, Up —
+was home for most of the period?
+
+This is context. Do not lead with it.
+Do not make it the story.
+
+STEP TWO — THE EXCEPTIONS
+Which sessions broke the dominant pattern —
+even partially, even slightly? Flag every exception.
+
+STEP THREE — CROSS-REFERENCE THE EXCEPTIONS
+For each exception session: what was present?
+What did the guest write about? What preceded it?
+
+STEP FOUR — THE PATTERN WITHIN THE EXCEPTIONS
+What thread runs through the exception sessions?
+This thread is the insight.
+
+STEP FIVE — CONNECT TO VALUES
+Where does the exception pattern connect to
+what this guest identified as genuinely mattering?
+
+STEP SIX — MAP THE EVOLUTION SIGNALS
+What has actually shifted across this period?
+Language. Undertow frequency. Values alignment.
+Writing depth. Capacity signals.
+
+───────────────────────────────────────────────────
+HARD LIMITS — ABSOLUTE
+───────────────────────────────────────────────────
+
+NEVER: manufacture evolution not in the data
+NEVER: report statistics without story
+NEVER: focus on dominant difficult feeling as
+       the main finding
+NEVER: name clinical conditions or diagnose patterns
+NEVER: use lists, bullets, or headers —
+       prose throughout
+NEVER: use first person, clinical language,
+       wellness language, or AI language
+NEVER: produce the summary in isolation from
+       previous summaries
+
+CRISIS: if current data suggests the guest is
+in acute distress or immediate danger — do not
+generate the summary. Acknowledge with care.
+Direct to human support immediately. Always.
+
+───────────────────────────────────────────────────
+GUEST DATA FOR THIS PERIOD
+───────────────────────────────────────────────────
+
+Period: ${new Date(periodStart).toLocaleDateString()} to ${new Date(periodEnd).toLocaleDateString()} — ${periodDays} days — ${entries.length} sessions
+
+PERSONA AND PROFILE:
+${personaText}
+
+${previousSummariesText ? `PREVIOUS SUMMARIES:\n${previousSummariesText}\n` : ''}
+
+MOOD DATA:
+Pre-session average: ${avgMoodPre || 'insufficient data'}/10
+Post-session average: ${avgMoodPost || 'insufficient data'}/10
+Average delta: ${avgDelta || 'insufficient data'} points
+Scores: ${moodScores.join(', ') || 'none'}
+
+FEELINGS DATA:
+${topFeelings || 'none logged'}
+
+${undertowSummary ? `UNDERTOW DATA:\n${undertowSummary}\n${undertowPatterns}\n` : ''}
+${undertowIndexText ? `UNDERTOW INDEX:\n${undertowIndexText}\n` : ''}
+${topTools ? `TOOL DATA:\n${topTools}\n${stackSummaries ? stackSummaries.substring(0, 500) : ''}\n` : ''}
+${inspirationText ? `INSPIRATIONS:\n${inspirationText.substring(0, 500)}\n` : ''}
+${fieldNoteText ? `FIELD NOTES:\n${fieldNoteText.substring(0, 500)}\n` : ''}
+
+ENTRIES AND REFLECTIONS:
+${entriesText.substring(0, 4000)}`;
 
     try {
-        // Generate all sections in parallel
-        const sectionResponses = await Promise.all(
-            sectionPrompts.map(prompt => 
-                fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': process.env.ANTHROPIC_API_KEY,
-                        'anthropic-version': '2023-06-01'
-                    },
-                    body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 600,
-                        messages: [{ role: 'user', content: prompt }]
-                    })
-                }).then(r => r.json()).then(d => d.content[0].text.trim())
-            )
-        );
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 2000,
+                system: summarySystemPrompt,
+                messages: [
+                    {
+                        role: 'user',
+                        content: `Generate the summary for this guest's ${summaryType || 'weekly'} period. Prose only. Two movements — action then evolution. No headers, no bullets, no lists. The guest's register throughout. Under two minutes to read.`
+                    }
+                ]
+            })
+        });
+
+        const data = await response.json();
+        const summaryText = data.content[0].text.trim();
 
         const sections = {
-            section1_period: sectionResponses[0],
-            section2_mood: sectionResponses[1],
-            section3_reflections: sectionResponses[2],
-            section4_language: sectionResponses[3],
-            section5_your_words: sectionResponses[4],
-            section6_tools: sectionResponses[5],
-            section7_progression: sectionResponses[6],
-            section8_forward: sectionResponses[7]
+            summary: summaryText,
+            period: `${new Date(periodStart).toLocaleDateString()} — ${new Date(periodEnd).toLocaleDateString()}`,
+            session_count: entries.length,
+            avg_mood_pre: avgMoodPre,
+            avg_mood_post: avgMoodPost,
+            avg_mood_delta: avgDelta,
+            top_feelings: topFeelings
         };
 
-        // Save to summaries table
         const { data: savedSummary, error } = await supabaseClient
             .from('summaries')
             .insert([{
                 summary: JSON.stringify(sections),
-                summary_type: summaryType || 'custom',
+                summary_type: summaryType || 'weekly',
                 period_start: periodStart,
                 period_end: periodEnd,
                 entry_count: entries.length,
