@@ -28,7 +28,8 @@ module.exports = async function handler(req, res) {
         undertowLogResult,
         personaResult,
         undertowIndexResult,
-        previousSummaryResult
+        previousSummaryResult,
+        guestValuesResult
     ] = await Promise.all([
         supabaseClient.from('entries').select('entry, reflection, prompt, mood_post, created_at').eq('user_id', userId).not('entry', 'is', null).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('mood').select('score, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
@@ -37,9 +38,10 @@ module.exports = async function handler(req, res) {
         supabaseClient.from('inspirations').select('content, category, feeling_evoked, location, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('field_notes').select('content, location, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('undertow_log').select('undertow_name, trigger_note, pattern_tag, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
-        supabaseClient.from('persona').select('field, value').eq('is_sensitive', false),
+        supabaseClient.from('persona').select('field, content').eq('is_sensitive', false),
         supabaseClient.from('undertow_index').select('name, known_contradictions, weakening_indicators').eq('is_sensitive', true),
-        supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(3)
+        supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(3),
+        supabaseClient.from('guest_values').select('name, description, evidence, status').order('created_at', { ascending: true })
     ]);
 
     const entries = entriesResult.data || [];
@@ -52,9 +54,27 @@ module.exports = async function handler(req, res) {
     const persona = personaResult.data || [];
     const undertowIndex = undertowIndexResult.data || [];
     const previousSummaries = previousSummaryResult.data || [];
+    const guestValues = guestValuesResult.data || [];
 
-    // Compress data for context
-    const personaText = persona.map(p => `${p.field}: ${p.value}`).join('\n');
+    // Compress persona data
+    const personaText = persona.map(p => `${p.field}: ${p.content}`).join('\n');
+
+    // Compress human values data
+    let humanValuesText = '';
+    if (guestValues.length > 0) {
+        const identified = guestValues.filter(v => v.status === 'identified');
+        const discovered = guestValues.filter(v => v.status === 'discovered');
+        if (identified.length > 0) {
+            humanValuesText = 'IDENTIFIED VALUES:\n' + identified
+                .map(v => `${v.name}: ${v.description}`)
+                .join('\n');
+        }
+        if (discovered.length > 0) {
+            humanValuesText += '\nEMERGING VALUES:\n' + discovered
+                .map(v => `${v.name}: ${v.evidence}`)
+                .join('\n');
+        }
+    }
 
     const entriesText = entries.map((e, i) =>
         `Entry ${i + 1} (${new Date(e.created_at).toLocaleDateString()}):\n${e.entry}\nReflection: ${e.reflection || 'none'}`
@@ -130,17 +150,20 @@ THE ACTION SECTION — two thirds to three quarters
 The story of what actually happened. The movements.
 The patterns. The exceptions to the dominant
 feeling. The small repairs. The good wolf evidence.
-The values showing up in behavior. Pragmatic.
-Specific. Grounded entirely in real data.
+The human values showing up in behavior — named
+as behavior, not as values. Where the guest
+lived their compass without calling it that.
+Pragmatic. Specific. Grounded entirely in real data.
 
 THE EVOLUTION SECTION — one quarter to one third
 What has actually shifted across this period.
 Derived from the action evidence. Named honestly.
-The challenge acknowledged. The good wolf returned
-with the full weight of the period behind it.
-Ended with the strongest possible conviction
-landing — the exclamation mark that makes the
-guest want to continue.
+The challenge acknowledged. Where the human values
+grew stronger, were tested, or showed up in new
+form. The good wolf returned with the full weight
+of the period behind it. Ended with the strongest
+possible conviction landing — the sentence that
+makes the guest want to continue.
 
 ───────────────────────────────────────────────────
 CONTEXT ASSEMBLY — READ IN THIS ORDER
@@ -148,11 +171,10 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
 
 1. ALL PREVIOUS SUMMARIES (if they exist)
    This period does not exist in isolation.
-   The guest's story is continuous. What moved
-   in previous periods is context for what moved
-   in this one. Read every previous summary
-   before reading anything from the current period.
-   The long arc is always present.
+   The guest's story is continuous. Read every
+   previous summary before reading anything
+   from the current period. The long arc is
+   always present.
 
 2. ALL ENTRIES AND REFLECTIONS IN THE PERIOD
    Every entry. Every reflection Prompt 2 returned.
@@ -168,15 +190,18 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
    their full time with Mirror. Who they are
    beyond this period. What has been building.
 
-5. VALUES PROFILE
-   The compass. What this guest identified as
-   genuinely mattering. The good wolf's nature.
+5. HUMAN VALUES PROFILE
+   What this guest stands for. The compass
+   underneath everything. Where values have been
+   operating in behavior across this period —
+   even without being named. Where they were
+   tested. Where they grew. Where they were
+   absent in a way that mattered.
 
 6. FLAGGED LANGUAGE
    The guest's own most precise, honest, or
    revealing phrases from across the period.
-   Their exact words. Not paraphrased. Held
-   for return in the guest's own words section.
+   Their exact words. Not paraphrased.
 
 7. SESSION FREQUENCY AND PATTERN
    How often the guest came. When they came.
@@ -189,10 +214,7 @@ PRE-WRITING ANALYSIS — COMPLETE BEFORE WRITING
 STEP ONE — THE DOMINANT PATTERN
 Across all sessions: which feelings dominated?
 Which themes recurred? Which undertows appeared
-most often? Which column — Down, Neutral, Up —
-was home for most of the period?
-
-This is context. Do not lead with it.
+most often? This is context. Do not lead with it.
 Do not make it the story.
 
 STEP TWO — THE EXCEPTIONS
@@ -207,14 +229,19 @@ STEP FOUR — THE PATTERN WITHIN THE EXCEPTIONS
 What thread runs through the exception sessions?
 This thread is the insight.
 
-STEP FIVE — CONNECT TO VALUES
+STEP FIVE — CONNECT TO HUMAN VALUES
 Where does the exception pattern connect to
-what this guest identified as genuinely mattering?
+the guest's human values? Which values were
+operating in those exception sessions — even
+without being named? Name the behavior. Let
+the guest name the value.
 
 STEP SIX — MAP THE EVOLUTION SIGNALS
 What has actually shifted across this period?
 Language. Undertow frequency. Values alignment.
-Writing depth. Capacity signals.
+Writing depth. Capacity signals. Where are the
+human values showing up more consistently,
+more deliberately, more naturally than before?
 
 ───────────────────────────────────────────────────
 HARD LIMITS — ABSOLUTE
@@ -231,6 +258,9 @@ NEVER: use first person, clinical language,
        wellness language, or AI language
 NEVER: produce the summary in isolation from
        previous summaries
+NEVER: name a human value directly as praise —
+       surface the behavior, let the guest
+       name the value themselves
 
 CRISIS: if current data suggests the guest is
 in acute distress or immediate danger — do not
@@ -246,6 +276,7 @@ Period: ${new Date(periodStart).toLocaleDateString()} to ${new Date(periodEnd).t
 PERSONA AND PROFILE:
 ${personaText}
 
+${humanValuesText ? `HUMAN VALUES:\n${humanValuesText}\n` : ''}
 ${previousSummariesText ? `PREVIOUS SUMMARIES:\n${previousSummariesText}\n` : ''}
 
 MOOD DATA:

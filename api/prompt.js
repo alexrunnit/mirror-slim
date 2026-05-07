@@ -20,14 +20,38 @@ module.exports = async function handler(req, res) {
     // Pull non-sensitive persona fields
     const { data: personaRows } = await supabaseClient
         .from('persona')
-        .select('field, value')
+        .select('field, content')
         .eq('is_sensitive', false);
 
     let personaContext = '';
     if (personaRows && personaRows.length > 0) {
         personaContext = personaRows
-            .map(row => `${row.field}: ${row.value}`)
+            .map(row => `${row.field}: ${row.content}`)
             .join('\n');
+    }
+
+    // Pull human values from dedicated table
+    const { data: guestValues } = await supabaseClient
+        .from('guest_values')
+        .select('name, description, evidence, status')
+        .order('created_at', { ascending: true });
+
+    let humanValuesContext = '';
+    if (guestValues && guestValues.length > 0) {
+        const identified = guestValues.filter(v => v.status === 'identified');
+        const discovered = guestValues.filter(v => v.status === 'discovered');
+
+        if (identified.length > 0) {
+            humanValuesContext = identified
+                .map(v => `${v.name}: ${v.description}`)
+                .join('\n');
+        }
+        if (discovered.length > 0) {
+            humanValuesContext += '\n\nEMERGING VALUES (detected in writing):\n';
+            humanValuesContext += discovered
+                .map(v => `${v.name}: ${v.evidence}`)
+                .join('\n');
+        }
     }
 
     // Pull most recent summary
@@ -61,7 +85,6 @@ module.exports = async function handler(req, res) {
         .order('created_at', { ascending: false })
         .limit(10);
 
-    // Group feelings from the most recent session
     let recentFeelingsContext = '';
     if (recentFeelingsData && recentFeelingsData.length > 0) {
         const mostRecentTime = new Date(recentFeelingsData[0].created_at);
@@ -183,19 +206,21 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
 
 2. PROGRESSIVE PROFILING SYNTHESIS
    Recurring themes. Language patterns. Undertow
-   history. Good wolf moments. Values alignment
-   signals. Mood trajectory. Who this guest is
+   history. Good wolf moments. Human values in
+   action. Mood trajectory. Who this guest is
    across time — not just today.
 
-3. VALUES PROFILE (onboarding)
-   What this guest identified as genuinely
-   mattering. The compass underneath everything.
-   The good wolf's name and nature.
+3. HUMAN VALUES PROFILE
+   What this guest stands for. The compass
+   underneath everything. Where values have been
+   showing up in behavior — even without being
+   named. Where they have been absent in a way
+   that matters. The good wolf's deepest nature.
 
-4. LAST THREE ENTRIES + REFLECTIONS
-   What Prompt 2 has been surfacing recently.
-   The baton handed from the most recent sessions.
-   What has been moving. What keeps recurring.
+4. LAST FIVE ENTRIES
+   What has been written recently. The baton
+   handed from the most recent sessions. What
+   has been moving. What keeps recurring.
 
 5. CURRENT SESSION SIGNALS
    Feelings grid selection. Context note if added.
@@ -213,39 +238,42 @@ interior landscape that is worth opening right now.
 
 APERTURE SELECTION HIERARCHY:
 
-FIRST — values-aligned exceptions
+FIRST — human values in action
+Where does the current data show the guest's
+human values operating in their behavior —
+even slightly, even incidentally? Where is a
+value being lived that the guest hasn't yet
+named? Where is a value the guest holds being
+tested or stretched? This is the highest
+priority aperture. This is where the most
+significant movement happens.
+
+SECOND — values-aligned exceptions
 Where does the current data show the guest
-moving toward what they identified as genuinely
-mattering — even slightly, even incidentally?
-This is good wolf territory. This is where
-curiosity produces the most movement.
+moving toward what genuinely matters to them
+— even slightly, even incidentally?
+This is good wolf territory.
 
-SECOND — pattern breaks
+THIRD — pattern breaks
 Where does today's data differ from the dominant
-pattern in the progressive profile? The guest
-who usually reports disconnection but today
-named something different. The theme that has
-been building and today surfaced differently.
-The change — however small — is the aperture.
+pattern in the progressive profile? The change
+— however small — is the aperture.
 
-THIRD — returning themes
+FOURTH — returning themes
 What keeps coming back in the writing that
-hasn't yet fully resolved? Not to push the
-guest toward it. To open it gently, from
-the side, in a way that feels safe to enter.
+hasn't yet fully resolved? Open it gently,
+from the side, in a way that feels safe to enter.
 
-FOURTH — present moment
+FIFTH — present moment
 When all else is thin — early sessions, sparse
 data — the current feelings and context note
-are the aperture. What is actually here, now,
-in this person's life today?
+are the aperture.
 
 CALIBRATE TO CURRENT SPEED:
 A guest at the beginning of their interior
-journey — writing briefly, naming feelings for
-the first time, still finding their footing —
-needs an aperture close to the surface. Specific.
-Contained. Safe to enter with three sentences.
+journey needs an aperture close to the surface.
+Specific. Contained. Safe to enter with three
+sentences.
 
 A guest who has been writing for months with
 depth and specificity can receive an aperture
@@ -336,6 +364,9 @@ NEVER: open toward a cognitive distortion —
        If yes — redirect to good wolf territory
 NEVER: produce the same aperture twice when
        a different one is ready
+NEVER: name a human value directly as the
+       subject of the question — point at the
+       behavior, let the guest name the value
 
 CRISIS: if signals suggest acute distress,
 suicidal ideation, or immediate danger —
@@ -357,11 +388,12 @@ GUEST CONTEXT
 Time of day: ${timeOfDay}
 
 ${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
+${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
 ${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}
 ${recentFeelingsContext ? `${recentFeelingsContext}\n` : ''}
 ${inspirationContext ? `RECENT INSPIRATIONS:\n${inspirationContext}\n` : ''}
-${historyContext ? `LAST THREE ENTRIES:\n${historyContext}` : ''}`;
+${historyContext ? `LAST FIVE ENTRIES:\n${historyContext}` : ''}`;
 
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -400,7 +432,7 @@ ${historyContext ? `LAST THREE ENTRIES:\n${historyContext}` : ''}`;
             return res.status(500).json({ error: 'Row insert failed', prompt: prompt });
         }
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             prompt: prompt,
             rowId: newRow.id
         });

@@ -20,14 +20,38 @@ module.exports = async function handler(req, res) {
     // Pull non-sensitive persona fields
     const { data: personaRows } = await supabaseClient
         .from('persona')
-        .select('field, value')
+        .select('field, content')
         .eq('is_sensitive', false);
 
     let personaContext = '';
     if (personaRows && personaRows.length > 0) {
         personaContext = personaRows
-            .map(row => `${row.field}: ${row.value}`)
+            .map(row => `${row.field}: ${row.content}`)
             .join('\n');
+    }
+
+    // Pull human values from dedicated table
+    const { data: guestValues } = await supabaseClient
+        .from('guest_values')
+        .select('name, description, evidence, status')
+        .order('created_at', { ascending: true });
+
+    let humanValuesContext = '';
+    if (guestValues && guestValues.length > 0) {
+        const identified = guestValues.filter(v => v.status === 'identified');
+        const discovered = guestValues.filter(v => v.status === 'discovered');
+
+        if (identified.length > 0) {
+            humanValuesContext = identified
+                .map(v => `${v.name}: ${v.description}`)
+                .join('\n');
+        }
+        if (discovered.length > 0) {
+            humanValuesContext += '\n\nEMERGING VALUES (detected in writing):\n';
+            humanValuesContext += discovered
+                .map(v => `${v.name}: ${v.evidence}`)
+                .join('\n');
+        }
     }
 
     // Pull most recent summary
@@ -125,12 +149,17 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
    significant in one context and ordinary in
    another. Context is everything.
 
-4. VALUES PROFILE
-   Where did the values show up in this entry —
-   even incidentally, even without being named?
-   Where were they absent in a way that matters?
+4. HUMAN VALUES PROFILE
+   Where did the guest's human values show up
+   in this entry — even incidentally, even
+   without being named? Where were they absent
+   in a way that matters? A guest describing
+   an act of generosity without using the word
+   generosity is expressing a value. Name what
+   was operating. Surface it precisely without
+   labeling it as praise.
 
-5. LAST THREE ENTRIES + REFLECTIONS
+5. LAST FIVE ENTRIES + REFLECTIONS
    What has Prompt 2 been surfacing recently?
    Does today's entry continue a thread, break
    a pattern, or return to something earlier?
@@ -205,6 +234,19 @@ the act. Not as praise. As precise observation.
 The guest sees their own good wolf in their
 own data and draws the conclusion themselves.
 
+READ FOR HUMAN VALUES IN ACTION:
+Scan the entry for the guest's human values
+operating in behavior or thought — even when
+not named explicitly. Gratitude expressed as
+noticing. Compassion expressed as restraint.
+Honesty expressed as a difficult admission.
+Curiosity expressed as a question asked inward.
+When a value is operating, name what the guest
+did — not the value itself. The guest recognizes
+their own value in the description of their
+own behavior. That recognition is more powerful
+than being told what value they hold.
+
 READ FOR REGISTER:
 Vocabulary range. Sentence length. Rhythm.
 Density. Tone. Heat or restraint. The reflection
@@ -263,9 +305,8 @@ true. And it is mine.
 WHAT THIS HANDS TO PROMPT 3:
 Every discovery, every good wolf moment, every
 pattern named, every undertow witnessed without
-being ratified — all of it becomes data for
-Prompt 3. The summary tells the story of what
-Prompt 2 has been surfacing across the period.
+being ratified, every human value observed in
+action — all of it becomes data for Prompt 3.
 Write each reflection as though it will be
 read again — because it will.
 
@@ -310,6 +351,11 @@ language, or clinical language
 
 NEVER: tell the guest what to do next
 
+NEVER: name a human value directly as praise
+(you showed great compassion / that was honest)
+— surface the behavior, let the guest name
+the value themselves
+
 CRISIS: if the entry reveals acute distress,
 suicidal ideation, or immediate danger to self
 or others — do not generate a reflection.
@@ -330,8 +376,9 @@ GUEST CONTEXT
 ───────────────────────────────────────────────────
 
 ${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
+${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
-${historyContext ? `LAST THREE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}`;
+${historyContext ? `LAST FIVE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}`;
 
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -512,6 +559,19 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         if (locationSummary) inspirationsContext += `\nLocations of inspiration: ${locationSummary}`;
     }
 
+    // Pull current guest values for synthesis context
+    const { data: guestValues } = await supabaseClient
+        .from('guest_values')
+        .select('name, status')
+        .order('created_at', { ascending: true });
+
+    let valuesContext = '';
+    if (guestValues && guestValues.length > 0) {
+        valuesContext = guestValues
+            .map(v => `${v.name} (${v.status})`)
+            .join(', ');
+    }
+
     const synthesisPrompt = `You are analyzing a private journal to extract evolving patterns and detect significant changes. You will produce two outputs.
 
 OUTPUT 1 — SUMMARY:
@@ -524,18 +584,23 @@ Write a single compressed paragraph (150 words maximum) capturing:
 - Overall trajectory — forward, static, or regressing
 - Mood trends if data is present — average score, direction, notable shifts
 - Feeling patterns if data is present — which feelings appear most, which cluster together
+- Human values operating in the writing — which values are showing up in behavior
 
 OUTPUT 2 — DETECTED CHANGES:
 List any significant changes detected, each on its own line in this exact format:
-TYPE|FIELD|DETECTED_VALUE|CONFIDENCE
-Where TYPE is either EVENT or DRIFT
-Where FIELD is the persona field being updated
-Where DETECTED_VALUE is what you observed
+TYPE|FIELD|DETECTED_CONTENT|CONFIDENCE
+Where TYPE is either EVENT, DRIFT, or HUMAN_VALUE
+Where FIELD is the persona field being updated (or value name if HUMAN_VALUE)
+Where DETECTED_CONTENT is what you observed
 Where CONFIDENCE is high, medium, or low
+
+For HUMAN_VALUE detections use this format:
+HUMAN_VALUE|value_name|evidence of this value operating in the writing|confidence
 
 PERSONA BASELINE:
 ${personaContext}
 
+${valuesContext ? `KNOWN HUMAN VALUES:\n${valuesContext}\n` : ''}
 ${moodContext ? `MOOD DATA:\n${moodContext}\n` : ''}
 ${deltaContext ? `POST-REFLECTION MOOD DATA:\n${deltaContext}\n` : ''}
 ${feelingsContext ? `FEELINGS DATA:\n${feelingsContext}\n` : ''}
@@ -584,11 +649,34 @@ ${entriesText}`;
         if (changesText) {
             const changeLines = changesText.split('\n').filter(line => line.includes('|'));
             for (const line of changeLines) {
-                const [type, field, detectedValue, confidence] = line.split('|');
-                if (type && field && detectedValue) {
+                const [type, field, detectedContent, confidence] = line.split('|');
+                if (type && field && detectedContent) {
+
+                    // Handle human value discoveries
+                    if (type.trim() === 'HUMAN_VALUE') {
+                        const { data: existingValues } = await supabaseClient
+                            .from('guest_values')
+                            .select('name')
+                            .eq('name', field.trim());
+
+                        if (!existingValues || existingValues.length === 0) {
+                            await supabaseClient
+                                .from('guest_values')
+                                .insert([{
+                                    name: field.trim(),
+                                    evidence: detectedContent.trim(),
+                                    status: 'discovered',
+                                    source: 'synthesis_detection',
+                                    detected_at: new Date().toISOString()
+                                }]);
+                        }
+                        continue;
+                    }
+
+                    // Handle regular persona updates
                     const { data: currentPersona } = await supabaseClient
                         .from('persona')
-                        .select('value')
+                        .select('content')
                         .eq('field', field.trim())
                         .single();
 
@@ -597,9 +685,10 @@ ${entriesText}`;
                         .insert([{
                             update_type: type.trim(),
                             field: field.trim(),
-                            detected_value: detectedValue.trim(),
-                            current_value: currentPersona ? currentPersona.value : '',
+                            detected_content: detectedContent.trim(),
+                            existing_content: currentPersona ? currentPersona.content : '',
                             confidence: confidence ? confidence.trim() : 'medium',
+                            category: 'persona',
                             reviewed: false,
                             accepted: false,
                             user_id: userId
