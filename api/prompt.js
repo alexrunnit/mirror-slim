@@ -18,41 +18,48 @@ module.exports = async function handler(req, res) {
     );
 
     // Pull non-sensitive persona fields
-    const { data: personaRows } = await supabaseClient
-        .from('guest_profile')
-        .select('field, content')
-        .eq('is_sensitive', false);
+  const { data: personaRows } = await supabaseClient
+    .from('guest_profile_v2')
+    .select('category, name, content')
+    .eq('is_sensitive', false)
+    .eq('status', 'active');
 
-    let personaContext = '';
-    if (personaRows && personaRows.length > 0) {
-        personaContext = personaRows
-            .map(row => `${row.field}: ${row.content}`)
-            .join('\n');
-    }
+let personaContext = '';
+if (personaRows && personaRows.length > 0) {
+    const grouped = {};
+    personaRows.forEach(row => {
+        if (!grouped[row.category]) grouped[row.category] = [];
+        grouped[row.category].push(`${row.name}: ${row.content}`);
+    });
+    personaContext = Object.entries(grouped)
+        .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
+        .join('\n\n');
+}
 
     // Pull human values from dedicated table
     const { data: guestValues } = await supabaseClient
-        .from('guest_values')
-        .select('name, description, evidence, status')
-        .order('created_at', { ascending: true });
+    .from('guest_profile_v2')
+    .select('name, content, status')
+    .eq('category', 'Stated Values')
+    .eq('status', 'active');
 
-    let humanValuesContext = '';
-    if (guestValues && guestValues.length > 0) {
-        const identified = guestValues.filter(v => v.status === 'identified');
-        const discovered = guestValues.filter(v => v.status === 'discovered');
+const { data: observedValues } = await supabaseClient
+    .from('guest_profile_v2')
+    .select('name, content')
+    .eq('category', 'Observed Values')
+    .eq('status', 'active');
 
-        if (identified.length > 0) {
-            humanValuesContext = identified
-                .map(v => `${v.name}: ${v.description}`)
-                .join('\n');
-        }
-        if (discovered.length > 0) {
-            humanValuesContext += '\n\nEMERGING VALUES (detected in writing):\n';
-            humanValuesContext += discovered
-                .map(v => `${v.name}: ${v.evidence}`)
-                .join('\n');
-        }
-    }
+let humanValuesContext = '';
+if (guestValues && guestValues.length > 0) {
+    humanValuesContext = 'STATED VALUES:\n' + guestValues
+        .map(v => `${v.name}: ${v.content}`)
+        .join('\n');
+}
+if (observedValues && observedValues.length > 0) {
+    humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValues
+        .map(v => `${v.name}: ${v.content}`)
+        .join('\n');
+}
 
     // Pull most recent summary
     const { data: summaryRows } = await supabaseClient

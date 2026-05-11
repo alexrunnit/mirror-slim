@@ -38,10 +38,10 @@ module.exports = async function handler(req, res) {
         supabaseClient.from('inspirations').select('content, category, feeling_evoked, location, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('field_notes').select('content, location, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('undertow_log').select('undertow_name, trigger_note, pattern_tag, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
-        supabaseClient.from('guest_profile_v2').select('field, content').eq('is_sensitive', false),
+        supabaseClient.from('guest_profile_v2').select('category, name, content').eq('is_sensitive', false).eq('status', 'active'),
         supabaseClient.from('undertow_index').select('name, known_contradictions, weakening_indicators').eq('is_sensitive', true),
         supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(3),
-        supabaseClient.from('guest_values').select('name, description, evidence, status').order('created_at', { ascending: true })
+        supabaseClient.from('guest_profile_v2').select('name, content, status').eq('category', 'Stated Values').eq('status', 'active')
     ]);
 
     const entries = entriesResult.data || [];
@@ -57,24 +57,22 @@ module.exports = async function handler(req, res) {
     const guestValues = guestValuesResult.data || [];
 
     // Compress persona data
-    const personaText = persona.map(p => `${p.field}: ${p.content}`).join('\n');
+    const grouped = {};
+persona.forEach(row => {
+    if (!grouped[row.category]) grouped[row.category] = [];
+    grouped[row.category].push(`${row.name}: ${row.content}`);
+});
+const personaText = Object.entries(grouped)
+    .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
+    .join('\n\n');
 
     // Compress human values data
     let humanValuesText = '';
-    if (guestValues.length > 0) {
-        const identified = guestValues.filter(v => v.status === 'identified');
-        const discovered = guestValues.filter(v => v.status === 'discovered');
-        if (identified.length > 0) {
-            humanValuesText = 'IDENTIFIED VALUES:\n' + identified
-                .map(v => `${v.name}: ${v.description}`)
-                .join('\n');
-        }
-        if (discovered.length > 0) {
-            humanValuesText += '\nEMERGING VALUES:\n' + discovered
-                .map(v => `${v.name}: ${v.evidence}`)
-                .join('\n');
-        }
-    }
+if (guestValues.length > 0) {
+    humanValuesText = 'STATED VALUES:\n' + guestValues
+        .map(v => `${v.name}: ${v.content}`)
+        .join('\n');
+}
 
     const entriesText = entries.map((e, i) =>
         `Entry ${i + 1} (${new Date(e.created_at).toLocaleDateString()}):\n${e.entry}\nReflection: ${e.reflection || 'none'}`
