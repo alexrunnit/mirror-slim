@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
         supabaseClient.from('inspirations').select('content, category, feeling_evoked, location, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('field_notes').select('content, location, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('undertow_log').select('undertow_name, trigger_note, pattern_tag, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
-        supabaseClient.from('persona').select('field, content').eq('is_sensitive', false),
+        supabaseClient.from('guest_profile_v2').select('field, content').eq('is_sensitive', false),
         supabaseClient.from('undertow_index').select('name, known_contradictions, weakening_indicators').eq('is_sensitive', true),
         supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(3),
         supabaseClient.from('guest_values').select('name, description, evidence, status').order('created_at', { ascending: true })
