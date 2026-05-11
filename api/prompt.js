@@ -18,48 +18,63 @@ module.exports = async function handler(req, res) {
     );
 
     // Pull non-sensitive persona fields
-  const { data: personaRows } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('category, name, content')
-    .eq('is_sensitive', false)
-    .eq('status', 'active');
+    const { data: personaRows } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('category, name, content')
+        .eq('is_sensitive', false)
+        .eq('status', 'active');
 
-let personaContext = '';
-if (personaRows && personaRows.length > 0) {
-    const grouped = {};
-    personaRows.forEach(row => {
-        if (!grouped[row.category]) grouped[row.category] = [];
-        grouped[row.category].push(`${row.name}: ${row.content}`);
-    });
-    personaContext = Object.entries(grouped)
-        .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
-        .join('\n\n');
-}
+    let personaContext = '';
+    if (personaRows && personaRows.length > 0) {
+        const grouped = {};
+        personaRows.forEach(row => {
+            if (!grouped[row.category]) grouped[row.category] = [];
+            grouped[row.category].push(`${row.name}: ${row.content}`);
+        });
+        personaContext = Object.entries(grouped)
+            .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
+            .join('\n\n');
+    }
 
-    // Pull human values from dedicated table
+    // Pull stated and observed values
     const { data: guestValues } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content, status')
-    .eq('category', 'Stated Values')
-    .eq('status', 'active');
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Stated Values')
+        .eq('status', 'active');
 
-const { data: observedValues } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content')
-    .eq('category', 'Observed Values')
-    .eq('status', 'active');
+    const { data: observedValues } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Observed Values')
+        .eq('status', 'active');
 
-let humanValuesContext = '';
-if (guestValues && guestValues.length > 0) {
-    humanValuesContext = 'STATED VALUES:\n' + guestValues
-        .map(v => `${v.name}: ${v.content}`)
-        .join('\n');
-}
-if (observedValues && observedValues.length > 0) {
-    humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValues
-        .map(v => `${v.name}: ${v.content}`)
-        .join('\n');
-}
+    let humanValuesContext = '';
+    if (guestValues && guestValues.length > 0) {
+        humanValuesContext = 'STATED VALUES:\n' + guestValues
+            .map(v => `${v.name}: ${v.content}`)
+            .join('\n');
+    }
+    if (observedValues && observedValues.length > 0) {
+        humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValues
+            .map(v => `${v.name}: ${v.content}`)
+            .join('\n');
+    }
+
+    // Pull mirror guest observations
+    const { data: observations } = await supabaseClient
+        .from('mirror_guest_observations')
+        .select('update_type, field, detected_content, confidence, created_at')
+        .eq('accepted', true)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    let observationsContext = '';
+    if (observations && observations.length > 0) {
+        observationsContext = observations
+            .map(o => `${o.update_type} — ${o.field}: ${o.detected_content}`)
+            .join('\n');
+    }
 
     // Pull most recent summary
     const { data: summaryRows } = await supabaseClient
@@ -84,7 +99,7 @@ if (observedValues && observedValues.length > 0) {
         }
     }
 
-    // Pull most recent feelings from Supabase
+    // Pull most recent feelings
     const { data: recentFeelingsData } = await supabaseClient
         .from('feelings')
         .select('feeling, note, created_at')
@@ -105,7 +120,7 @@ if (observedValues && observedValues.length > 0) {
         if (feelingNote) recentFeelingsContext += `\nFeelings note: ${feelingNote}`;
     }
 
-    // Query recent entries directly from Supabase
+    // Query recent entries
     const { data: recentEntriesData } = await supabaseClient
         .from('entries')
         .select('entry, created_at')
@@ -121,7 +136,7 @@ if (observedValues && observedValues.length > 0) {
             .join('\n\n');
     }
 
-    // Pull recent inspirations for prompt context
+    // Pull recent inspirations
     const { data: recentInspirations } = await supabaseClient
         .from('inspirations')
         .select('content, category, feeling_evoked, location')
@@ -153,7 +168,7 @@ if (observedValues && observedValues.length > 0) {
         currentStateContext += `Feelings note: ${feelingsNote}\n`;
     }
 
-    // Get current hour for time of day awareness
+    // Time of day
     const hour = new Date().getHours();
     let timeOfDay = '';
     if (hour >= 5 && hour < 12) timeOfDay = 'morning';
@@ -211,11 +226,13 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
    This is the baton handed from Prompt 3.
    Read it first. Everything else builds on it.
 
-2. PROGRESSIVE PROFILING SYNTHESIS
-   Recurring themes. Language patterns. Undertow
-   history. Good wolf moments. Human values in
-   action. Mood trajectory. Who this guest is
-   across time — not just today.
+2. MIRROR OBSERVATIONS
+   What the engine has detected changing across
+   sessions — language shifts, emotional pattern
+   changes, identity reconstruction signals,
+   momentum direction. This is the most current
+   picture of who this guest is becoming.
+   Weight this heavily for aperture selection.
 
 3. HUMAN VALUES PROFILE
    What this guest stands for. The compass
@@ -395,6 +412,7 @@ GUEST CONTEXT
 Time of day: ${timeOfDay}
 
 ${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
+${observationsContext ? `MIRROR OBSERVATIONS (detected across sessions):\n${observationsContext}\n` : ''}
 ${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
 ${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}

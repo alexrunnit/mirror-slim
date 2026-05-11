@@ -29,7 +29,8 @@ module.exports = async function handler(req, res) {
         personaResult,
         undertowIndexResult,
         previousSummaryResult,
-        guestValuesResult
+        guestValuesResult,
+        observationsResult
     ] = await Promise.all([
         supabaseClient.from('entries').select('entry, reflection, prompt, mood_post, created_at').eq('user_id', userId).not('entry', 'is', null).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
         supabaseClient.from('mood').select('score, created_at').eq('user_id', userId).gte('created_at', periodStart).lte('created_at', periodEnd).order('created_at', { ascending: true }),
@@ -41,7 +42,8 @@ module.exports = async function handler(req, res) {
         supabaseClient.from('guest_profile_v2').select('category, name, content').eq('is_sensitive', false).eq('status', 'active'),
         supabaseClient.from('undertow_index').select('name, known_contradictions, weakening_indicators').eq('is_sensitive', true),
         supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(3),
-        supabaseClient.from('guest_profile_v2').select('name, content, status').eq('category', 'Stated Values').eq('status', 'active')
+        supabaseClient.from('guest_profile_v2').select('name, content').eq('category', 'Stated Values').eq('status', 'active'),
+        supabaseClient.from('mirror_guest_observations').select('update_type, field, detected_content, confidence, created_at').eq('accepted', true).order('created_at', { ascending: false }).limit(30)
     ]);
 
     const entries = entriesResult.data || [];
@@ -55,24 +57,33 @@ module.exports = async function handler(req, res) {
     const undertowIndex = undertowIndexResult.data || [];
     const previousSummaries = previousSummaryResult.data || [];
     const guestValues = guestValuesResult.data || [];
+    const observations = observationsResult.data || [];
 
     // Compress persona data
     const grouped = {};
-persona.forEach(row => {
-    if (!grouped[row.category]) grouped[row.category] = [];
-    grouped[row.category].push(`${row.name}: ${row.content}`);
-});
-const personaText = Object.entries(grouped)
-    .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
-    .join('\n\n');
+    persona.forEach(row => {
+        if (!grouped[row.category]) grouped[row.category] = [];
+        grouped[row.category].push(`${row.name}: ${row.content}`);
+    });
+    const personaText = Object.entries(grouped)
+        .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
+        .join('\n\n');
 
     // Compress human values data
     let humanValuesText = '';
-if (guestValues.length > 0) {
-    humanValuesText = 'STATED VALUES:\n' + guestValues
-        .map(v => `${v.name}: ${v.content}`)
-        .join('\n');
-}
+    if (guestValues.length > 0) {
+        humanValuesText = 'STATED VALUES:\n' + guestValues
+            .map(v => `${v.name}: ${v.content}`)
+            .join('\n');
+    }
+
+    // Compress mirror observations
+    let observationsText = '';
+    if (observations.length > 0) {
+        observationsText = observations
+            .map(o => `${o.update_type} — ${o.field}: ${o.detected_content}`)
+            .join('\n');
+    }
 
     const entriesText = entries.map((e, i) =>
         `Entry ${i + 1} (${new Date(e.created_at).toLocaleDateString()}):\n${e.entry}\nReflection: ${e.reflection || 'none'}`
@@ -174,19 +185,24 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
    from the current period. The long arc is
    always present.
 
-2. ALL ENTRIES AND REFLECTIONS IN THE PERIOD
+2. MIRROR OBSERVATIONS
+   What the engine has detected changing across
+   all sessions — language shifts, emotional
+   pattern changes, identity signals, momentum
+   direction. This is the dynamic layer. It
+   tells the story of what has been moving
+   beneath the surface of individual entries.
+   Weight this heavily when identifying the
+   evolution signals for the summary.
+
+3. ALL ENTRIES AND REFLECTIONS IN THE PERIOD
    Every entry. Every reflection Prompt 2 returned.
    These are the raw material of the story.
 
-3. ALL FEELINGS GRID DATA IN THE PERIOD
+4. ALL FEELINGS GRID DATA IN THE PERIOD
    Every selection. Every context note. Mapped
    across the full period — not as statistics
    but as a pattern with shape and movement.
-
-4. PROGRESSIVE PROFILING SYNTHESIS
-   The compressed portrait of this guest across
-   their full time with Mirror. Who they are
-   beyond this period. What has been building.
 
 5. HUMAN VALUES PROFILE
    What this guest stands for. The compass
@@ -237,9 +253,9 @@ the guest name the value.
 STEP SIX — MAP THE EVOLUTION SIGNALS
 What has actually shifted across this period?
 Language. Undertow frequency. Values alignment.
-Writing depth. Capacity signals. Where are the
-human values showing up more consistently,
-more deliberately, more naturally than before?
+Writing depth. Capacity signals. Cross-reference
+with Mirror Observations — where do the engine
+detections confirm what the entries suggest?
 
 ───────────────────────────────────────────────────
 HARD LIMITS — ABSOLUTE
@@ -274,6 +290,7 @@ Period: ${new Date(periodStart).toLocaleDateString()} to ${new Date(periodEnd).t
 PERSONA AND PROFILE:
 ${personaText}
 
+${observationsText ? `MIRROR OBSERVATIONS (detected across all sessions):\n${observationsText}\n` : ''}
 ${humanValuesText ? `HUMAN VALUES:\n${humanValuesText}\n` : ''}
 ${previousSummariesText ? `PREVIOUS SUMMARIES:\n${previousSummariesText}\n` : ''}
 

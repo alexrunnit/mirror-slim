@@ -18,48 +18,63 @@ module.exports = async function handler(req, res) {
     );
 
     // Pull non-sensitive persona fields
-  const { data: personaRows } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('category, name, content')
-    .eq('is_sensitive', false)
-    .eq('status', 'active');
+    const { data: personaRows } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('category, name, content')
+        .eq('is_sensitive', false)
+        .eq('status', 'active');
 
-let personaContext = '';
-if (personaRows && personaRows.length > 0) {
-    const grouped = {};
-    personaRows.forEach(row => {
-        if (!grouped[row.category]) grouped[row.category] = [];
-        grouped[row.category].push(`${row.name}: ${row.content}`);
-    });
-    personaContext = Object.entries(grouped)
-        .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
-        .join('\n\n');
-}
+    let personaContext = '';
+    if (personaRows && personaRows.length > 0) {
+        const grouped = {};
+        personaRows.forEach(row => {
+            if (!grouped[row.category]) grouped[row.category] = [];
+            grouped[row.category].push(`${row.name}: ${row.content}`);
+        });
+        personaContext = Object.entries(grouped)
+            .map(([cat, items]) => `${cat}:\n${items.join('\n')}`)
+            .join('\n\n');
+    }
 
-    // Pull human values from dedicated table
-   const { data: guestValues } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content, status')
-    .eq('category', 'Stated Values')
-    .eq('status', 'active');
+    // Pull stated and observed values
+    const { data: guestValues } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Stated Values')
+        .eq('status', 'active');
 
-const { data: observedValues } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content')
-    .eq('category', 'Observed Values')
-    .eq('status', 'active');
+    const { data: observedValues } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Observed Values')
+        .eq('status', 'active');
 
-let humanValuesContext = '';
-if (guestValues && guestValues.length > 0) {
-    humanValuesContext = 'STATED VALUES:\n' + guestValues
-        .map(v => `${v.name}: ${v.content}`)
-        .join('\n');
-}
-if (observedValues && observedValues.length > 0) {
-    humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValues
-        .map(v => `${v.name}: ${v.content}`)
-        .join('\n');
-}
+    let humanValuesContext = '';
+    if (guestValues && guestValues.length > 0) {
+        humanValuesContext = 'STATED VALUES:\n' + guestValues
+            .map(v => `${v.name}: ${v.content}`)
+            .join('\n');
+    }
+    if (observedValues && observedValues.length > 0) {
+        humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValues
+            .map(v => `${v.name}: ${v.content}`)
+            .join('\n');
+    }
+
+    // Pull mirror guest observations
+    const { data: observations } = await supabaseClient
+        .from('mirror_guest_observations')
+        .select('update_type, field, detected_content, confidence, created_at')
+        .eq('accepted', true)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    let observationsContext = '';
+    if (observations && observations.length > 0) {
+        observationsContext = observations
+            .map(o => `${o.update_type} — ${o.field}: ${o.detected_content}`)
+            .join('\n');
+    }
 
     // Pull most recent summary
     const { data: summaryRows } = await supabaseClient
@@ -148,13 +163,13 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
    the writing revealed that the prompt didn't
    anticipate.
 
-3. PROGRESSIVE PROFILING SYNTHESIS
-   What does this entry mean in the context of
-   everything Mirror holds about this guest?
-   The same words mean different things for
-   different guests. The same behavior is
-   significant in one context and ordinary in
-   another. Context is everything.
+3. MIRROR OBSERVATIONS
+   What the engine has detected changing across
+   sessions. The dynamic layer — language shifts,
+   emotional pattern changes, identity signals,
+   momentum direction. Use this to understand
+   what this entry means in the context of
+   the guest's current trajectory.
 
 4. HUMAN VALUES PROFILE
    Where did the guest's human values show up
@@ -383,6 +398,7 @@ GUEST CONTEXT
 ───────────────────────────────────────────────────
 
 ${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
+${observationsContext ? `MIRROR OBSERVATIONS (detected across sessions):\n${observationsContext}\n` : ''}
 ${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
 ${historyContext ? `LAST FIVE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}`;
@@ -566,16 +582,17 @@ async function runSynthesis(supabaseClient, recentEntries, personaContext, userI
         if (locationSummary) inspirationsContext += `\nLocations of inspiration: ${locationSummary}`;
     }
 
-    // Pull current guest values for synthesis context
-    const { data: guestValues } = await supabaseClient
-        .from('guest_values')
+    // Pull current stated values for synthesis context
+    const { data: statedValues } = await supabaseClient
+        .from('guest_profile_v2')
         .select('name, status')
-        .order('created_at', { ascending: true });
+        .eq('category', 'Stated Values')
+        .eq('status', 'active');
 
     let valuesContext = '';
-    if (guestValues && guestValues.length > 0) {
-        valuesContext = guestValues
-            .map(v => `${v.name} (${v.status})`)
+    if (statedValues && statedValues.length > 0) {
+        valuesContext = statedValues
+            .map(v => v.name)
             .join(', ');
     }
 
@@ -607,7 +624,7 @@ HUMAN_VALUE|value_name|evidence of this value operating in the writing|confidenc
 PERSONA BASELINE:
 ${personaContext}
 
-${valuesContext ? `KNOWN HUMAN VALUES:\n${valuesContext}\n` : ''}
+${valuesContext ? `KNOWN STATED VALUES:\n${valuesContext}\n` : ''}
 ${moodContext ? `MOOD DATA:\n${moodContext}\n` : ''}
 ${deltaContext ? `POST-REFLECTION MOOD DATA:\n${deltaContext}\n` : ''}
 ${feelingsContext ? `FEELINGS DATA:\n${feelingsContext}\n` : ''}
@@ -659,41 +676,37 @@ ${entriesText}`;
                 const [type, field, detectedContent, confidence] = line.split('|');
                 if (type && field && detectedContent) {
 
-                    // Handle human value discoveries
+                    // Handle human value discoveries — write to guest_profile_v2
                     if (type.trim() === 'HUMAN_VALUE') {
-                        const { data: existingValues } = await supabaseClient
-                            .from('guest_values')
-                            .select('name')
-                            .eq('name', field.trim());
+                        const { data: existingValue } = await supabaseClient
+                            .from('guest_profile_v2')
+                            .select('id')
+                            .eq('category', 'Observed Values')
+                            .eq('name', field.trim())
+                            .single();
 
-                        if (!existingValues || existingValues.length === 0) {
+                        if (!existingValue) {
                             await supabaseClient
-                                .from('guest_values')
+                                .from('guest_profile_v2')
                                 .insert([{
+                                    category: 'Observed Values',
                                     name: field.trim(),
-                                    evidence: detectedContent.trim(),
-                                    status: 'discovered',
-                                    source: 'synthesis_detection',
-                                    detected_at: new Date().toISOString()
+                                    content: detectedContent.trim(),
+                                    source: 'engine_detected',
+                                    status: 'active'
                                 }]);
                         }
                         continue;
                     }
 
-                    // Handle regular persona updates
-                    const { data: currentPersona } = await supabaseClient
-                        .from('guest_profile_v2')
-                        .select('content')
-                        .eq('field', field.trim())
-                        .single();
-
+                    // Handle regular persona observations — write to mirror_guest_observations
                     await supabaseClient
-                        .from('guest_profile_v2')
+                        .from('mirror_guest_observations')
                         .insert([{
                             update_type: type.trim(),
                             field: field.trim(),
                             detected_content: detectedContent.trim(),
-                            existing_content: currentPersona ? currentPersona.content : '',
+                            existing_content: '',
                             confidence: confidence ? confidence.trim() : 'medium',
                             category: 'persona',
                             reviewed: false,
