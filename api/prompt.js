@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
 
     // Pull non-sensitive persona fields
     const { data: personaRows } = await supabaseClient
-        .from('persona')
+        .from('guest_profile')
         .select('field, content')
         .eq('is_sensitive', false);
 
