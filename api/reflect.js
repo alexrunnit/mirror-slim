@@ -92,8 +92,6 @@ if (observations && observations.length > 0) {
         .join('\n');
 }
 
-    }
-
     // Pull most recent summary
     const { data: summaryRows } = await supabaseClient
         .from('summaries')
