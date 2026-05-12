@@ -76,19 +76,22 @@ if (sensitiveRelationships && sensitiveRelationships.length > 0) {
             .join('\n');
     }
 
-    // Pull mirror guest observations
-    const { data: observations } = await supabaseClient
-        .from('mirror_guest_observations')
-        .select('update_type, field, detected_content, confidence, created_at')
-        .eq('accepted', true)
-        .order('created_at', { ascending: false })
-        .limit(20);
+    // Pull engine observations from consolidated profile
+const { data: observations } = await supabaseClient
+    .from('guest_profile_v2')
+    .select('name, content, confidence, created_at')
+    .eq('category', 'Engine Observations')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(20);
 
-    let observationsContext = '';
-    if (observations && observations.length > 0) {
-        observationsContext = observations
-            .map(o => `${o.update_type} — ${o.field}: ${o.detected_content}`)
-            .join('\n');
+let observationsContext = '';
+if (observations && observations.length > 0) {
+    observationsContext = observations
+        .map(o => `${o.name}: ${o.content}`)
+        .join('\n');
+}
+
     }
 
     // Pull most recent summary

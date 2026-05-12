@@ -76,19 +76,22 @@ if (sensitiveRelationships && sensitiveRelationships.length > 0) {
             .join('\n');
     }
 
-    // Pull mirror guest observations
-    const { data: observations } = await supabaseClient
-        .from('mirror_guest_observations')
-        .select('update_type, field, detected_content, confidence, created_at')
-        .eq('accepted', true)
-        .order('created_at', { ascending: false })
-        .limit(20);
+    // Pull engine observations from consolidated profile
+const { data: observations } = await supabaseClient
+    .from('guest_profile_v2')
+    .select('name, content, confidence, created_at')
+    .eq('category', 'Engine Observations')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(20);
 
-    let observationsContext = '';
-    if (observations && observations.length > 0) {
-        observationsContext = observations
-            .map(o => `${o.update_type} — ${o.field}: ${o.detected_content}`)
-            .join('\n');
+let observationsContext = '';
+if (observations && observations.length > 0) {
+    observationsContext = observations
+        .map(o => `${o.name}: ${o.content}`)
+        .join('\n');
+}
+
     }
 
     // Pull most recent summary
@@ -786,20 +789,19 @@ ${entriesText}`;
                         continue;
                     }
 
-                    // Handle regular persona observations — write to mirror_guest_observations
-                    await supabaseClient
-                        .from('mirror_guest_observations')
-                        .insert([{
-                            update_type: type.trim(),
-                            field: field.trim(),
-                            detected_content: detectedContent.trim(),
-                            existing_content: '',
-                            confidence: confidence ? confidence.trim() : 'medium',
-                            category: 'persona',
-                            reviewed: false,
-                            accepted: false,
-                            user_id: userId
-                        }]);
+                    // Write engine observations directly to guest_profile_v2
+// No approval gate — engine writes directly to the living profile
+await supabaseClient
+    .from('guest_profile_v2')
+    .insert([{
+        category: 'Engine Observations',
+        name: field.trim(),
+        content: detectedContent.trim(),
+        source: 'engine_detected',
+        status: 'active',
+        confidence: confidence ? confidence.trim() : 'medium'
+    }]);
+
                 }
             }
         }

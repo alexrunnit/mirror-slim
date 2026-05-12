@@ -43,7 +43,7 @@ module.exports = async function handler(req, res) {
         supabaseClient.from('undertow_index').select('name, known_contradictions, weakening_indicators').eq('is_sensitive', true),
         supabaseClient.from('summaries').select('summary, period_start, period_end').eq('user_id', userId).eq('summary_type', 'weekly').order('created_at', { ascending: false }).limit(3),
         supabaseClient.from('guest_profile_v2').select('name, content').eq('category', 'Stated Values').eq('status', 'active'),
-        supabaseClient.from('mirror_guest_observations').select('update_type, field, detected_content, confidence, created_at').eq('accepted', true).order('created_at', { ascending: false }).limit(30)
+        supabaseClient.from('guest_profile_v2').select('name, content, confidence, created_at').eq('category', 'Engine Observations').eq('status', 'active').order('created_at', { ascending: false }).limit(30)
     ]);
 
     const entries = entriesResult.data || [];
@@ -94,11 +94,11 @@ if (sensitiveRelationships && sensitiveRelationships.length > 0) {
 
     // Compress mirror observations
     let observationsText = '';
-    if (observations.length > 0) {
-        observationsText = observations
-            .map(o => `${o.update_type} — ${o.field}: ${o.detected_content}`)
-            .join('\n');
-    }
+if (observations.length > 0) {
+    observationsText = observations
+        .map(o => `${o.name}: ${o.content}`)
+        .join('\n');
+}
 
     const entriesText = entries.map((e, i) =>
         `Entry ${i + 1} (${new Date(e.created_at).toLocaleDateString()}):\n${e.entry}\nReflection: ${e.reflection || 'none'}`
