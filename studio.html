@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+html<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -270,15 +270,14 @@
 
     <script>
         // ─── Supabase ───
-        // Replace with your Mirror Slim Supabase credentials
         const supabaseClient = window.supabase.createClient(
             'https://ncecqssxcmmbkbnokjqd.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWNxc3N4Y21tYmtibm9ranFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjkwMjgsImV4cCI6MjA5MTEwNTAyOH0.PitKp7H_oG8hXbbhdTT7OjLAzJ1JWv3N_ZSRbM84Xa4'
         );
 
         // ─── Auth check ───
-        // Studio requires sign-in. If no session
-        // exists redirect to index.html for sign-in.
+        // Studio requires sign-in. If no session exists
+        // redirect to index.html for sign-in.
         async function initStudio() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
@@ -293,17 +292,27 @@
         let currentUser = null;
 
         // ─── Inspirations ───
+        /*
+            latitude and longitude are declared outside
+            the try block so they are accessible after it.
+            This is JavaScript variable scoping —
+            variables declared with let inside {} only
+            exist inside that block.
+        */
         async function captureInspiration() {
             const content = document.getElementById('inspiration-content').value.trim();
             if (!content) return;
             document.getElementById('inspire-btn').textContent = 'Capturing...';
 
             let location = null;
+            let latitude = null;
+            let longitude = null;
             try {
                 const pos = await new Promise((res, rej) =>
                     navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
                 );
-                const { latitude, longitude } = pos.coords;
+                latitude = pos.coords.latitude;
+                longitude = pos.coords.longitude;
                 const geoRes = await fetch(
                     `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
                 );
@@ -311,7 +320,7 @@
                 location = geoData.display_name || null;
             } catch {}
 
-const response = await fetch('/api/inspire', {
+            const response = await fetch('/api/inspire', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -341,11 +350,14 @@ const response = await fetch('/api/inspire', {
             document.getElementById('fieldnote-btn').textContent = 'Capturing...';
 
             let location = null;
+            let latitude = null;
+            let longitude = null;
             try {
                 const pos = await new Promise((res, rej) =>
                     navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
                 );
-                const { latitude, longitude } = pos.coords;
+                latitude = pos.coords.latitude;
+                longitude = pos.coords.longitude;
                 const geoRes = await fetch(
                     `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
                 );
@@ -353,7 +365,7 @@ const response = await fetch('/api/inspire', {
                 location = geoData.display_name || null;
             } catch {}
 
-        const response = await fetch('/api/fieldnote', {
+            const response = await fetch('/api/fieldnote', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -373,7 +385,7 @@ const response = await fetch('/api/inspire', {
             setTimeout(() => {
                 document.getElementById('fieldnote-status').textContent = '';
             }, 3000);
-        }    
+        }
 
         // ─── Undertows ───
         async function logUndertow() {
@@ -463,18 +475,21 @@ const response = await fetch('/api/inspire', {
             const note = document.getElementById('toolbox-note').value.trim();
             const toolList = Array.from(selectedTools).join(', ');
 
+            // toolNames is the correct parameter name the API expects
             const summaryRes = await fetch('/api/toolbox', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tools: Array.from(selectedTools),
-                    note,
-                    userId: currentUser.id
+                    toolNames: Array.from(selectedTools),
+                    note: note,
+                    userId: currentUser.id,
+                    latitude: null,
+                    longitude: null
                 })
             });
             const summaryData = await summaryRes.json();
 
-            document.getElementById('toolbox-summary').textContent = summaryData.summary || '';
+            document.getElementById('toolbox-summary').textContent = summaryData.stackSummary || '';
             document.getElementById('toolbox-status').textContent = `Stack logged: ${toolList}`;
             document.getElementById('toolbox-btn').textContent = 'Log Stack';
             document.getElementById('toolbox-note').value = '';
