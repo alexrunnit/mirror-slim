@@ -6,6 +6,13 @@
     <title>Mirror</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+
+        /* ─── Reset ─── */
+        * {
+            box-sizing: border-box;
+        }
+
+        /* ─── Page layout ─── */
         body {
             font-family: Georgia, serif;
             max-width: 640px;
@@ -14,12 +21,39 @@
             background: #faf9f7;
             color: #2c2c2c;
         }
-        h1 {
+
+        /* ─── Header ─── */
+        /*
+            Flexbox — one dimension (row).
+            space-between pushes wordmark left,
+            nav link right. align-items centers both.
+        */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .page-header .wordmark {
             font-size: 1.4rem;
             font-weight: normal;
-            margin-bottom: 40px;
             color: #555;
         }
+
+        .page-header .nav-link {
+            font-size: 0.75rem;
+            color: #aaa;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .page-header .nav-link:hover {
+            color: #555;
+        }
+
+        /* ─── Form elements ─── */
         input[type="email"] {
             width: 100%;
             padding: 12px 16px;
@@ -30,6 +64,7 @@
             box-sizing: border-box;
             margin-bottom: 12px;
         }
+
         textarea {
             width: 100%;
             height: 300px;
@@ -42,6 +77,7 @@
             resize: vertical;
             box-sizing: border-box;
         }
+
         button {
             margin-top: 16px;
             padding: 10px 24px;
@@ -51,21 +87,32 @@
             font-size: 0.9rem;
             cursor: pointer;
         }
+
+        /* ─── Reflection display ─── */
         #reflection {
             margin-top: 40px;
             line-height: 1.8;
             color: #444;
         }
+
+        /* ─── Status messages ─── */
         #status {
             margin-top: 16px;
             color: #666;
             font-size: 0.9rem;
         }
+
     </style>
 </head>
 <body>
-    <h1>Mirror</h1>
 
+    <!-- Page header -->
+    <div class="page-header">
+        <span class="wordmark">Mirror</span>
+        <a href="studio.html" class="nav-link">Studio →</a>
+    </div>
+
+    <!-- Login screen -->
     <div id="login-screen">
         <p style="color:#666; margin-bottom:24px;">Enter your email to sign in.</p>
         <input type="email" id="email" placeholder="your@email.com" />
@@ -73,6 +120,7 @@
         <div id="status"></div>
     </div>
 
+    <!-- Writing screen -->
     <div id="writing-screen" style="display:none;">
 
         <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Reflection Loop</p>
@@ -87,6 +135,12 @@
         <!-- Feelings tracker -->
         <div id="feelings-section" style="margin-bottom:32px;">
             <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">FEELINGS</p>
+            <!--
+                CSS Grid — two dimensions.
+                repeat(3, 1fr) creates three equal columns.
+                1fr means one fraction of available space.
+                gap:8px spaces the columns without margins.
+            -->
             <div id="feelings-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:16px;"></div>
             <textarea id="feelings-note" placeholder="Say more if you want to..." style="height:80px; font-size:0.9rem;"></textarea>
             <button onclick="saveFeelings()" id="feelings-btn" style="margin-top:8px; background:#f5f5f0; color:#555; border:1px solid #ddd;">Save Feelings</button>
@@ -103,6 +157,7 @@
 
         <div id="reflection"></div>
 
+        <!-- Post-writing mood -->
         <div id="mood-post-section" style="display:block; margin-top:32px;">
             <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">POST-WRITING MOOD</p>
             <div id="mood-post-buttons" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
@@ -111,67 +166,7 @@
 
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
-        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Observation Gallery</p>
-
-        <!-- Inspirations -->
-        <div id="inspiration-section" style="margin-bottom:32px;">
-            <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">INSPIRATIONS</p>
-            <textarea id="inspiration-content" placeholder="What moved you today?" style="height:100px; font-size:0.9rem; margin-bottom:8px;"></textarea>
-            <button onclick="captureInspiration()" id="inspire-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Capture</button>
-            <div id="inspiration-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-        </div>
-
-        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
-
-        <!-- Field Notes -->
-        <div id="fieldnote-section" style="margin-bottom:32px;">
-            <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">FIELD NOTES</p>
-            <textarea id="fieldnote-content" placeholder="Note something you observed..." style="height:100px; font-size:0.9rem; margin-bottom:8px;"></textarea>
-            <button onclick="captureFieldNote()" id="fieldnote-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Capture</button>
-            <div id="fieldnote-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-        </div>
-
-        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
-
-        <!-- Undertows -->
-        <div id="undertow-section" style="margin-bottom:32px;">
-            <p style="color:#888; font-size:0.85rem; margin-bottom:12px; letter-spacing:0.05em;">UNDERTOWS</p>
-            <textarea id="undertow-entry" placeholder="What's pulling you down?" style="height:120px; font-size:0.9rem; margin-bottom:8px;"></textarea>
-            <button onclick="logUndertow()" id="undertow-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Capture</button>
-            <div id="undertow-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-        </div>
-
-        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
-
-        <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Toolbox</p>
-
-        <div id="toolbox-section" style="margin-bottom:32px;">
-            <div id="toolbox-time-label" style="color:#888; font-size:0.85rem; margin-bottom:16px; letter-spacing:0.05em;"></div>
-            <div id="toolbox-stabilizers" style="margin-bottom:20px;">
-                <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">STABILIZERS</p>
-                <div id="stabilizer-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-            </div>
-            <div id="toolbox-regulators" style="margin-bottom:20px;">
-                <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">REGULATORS</p>
-                <div id="regulator-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-            </div>
-            <div id="toolbox-expanders" style="margin-bottom:20px;">
-                <p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:8px;">EXPANDERS</p>
-                <div id="expander-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-            </div>
-            <textarea id="toolbox-note" placeholder="Optional note about this stack..." style="height:60px; font-size:0.9rem; margin-bottom:8px;"></textarea>
-            <button onclick="logToolStack()" id="toolbox-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd;">Log Stack</button>
-            <div id="toolbox-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-            <div id="toolbox-summary" style="margin-top:24px; line-height:1.8; color:#444; font-size:0.95rem;"></div>
-            <div id="toolbox-feedback-section" style="display:none; margin-top:16px;">
-                <textarea id="toolbox-feedback" placeholder="How did it land? Optional." style="height:60px; font-size:0.9rem; margin-bottom:8px;"></textarea>
-                <button onclick="saveToolFeedback()" id="feedback-btn" style="background:#f5f5f0; color:#555; border:1px solid #ddd; margin-top:0;">Save Note</button>
-                <div id="feedback-status" style="margin-top:8px; font-size:0.85rem; color:#888;"></div>
-            </div>
-        </div>
-
-        <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
-
+        <!-- Summary -->
         <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Summary</p>
 
         <div id="summary-section" style="margin-bottom:32px;">
@@ -204,6 +199,7 @@
 
         <hr style="border:none; border-top:1px solid #eee; margin-top:40px; margin-bottom:32px;">
 
+        <!-- Archive -->
         <p style="font-size:1.1rem; font-weight:600; color:#888; letter-spacing:0.05em; margin-bottom:24px; text-transform:uppercase;">Archive</p>
 
         <div id="archive-section" style="margin-bottom:32px;">
@@ -239,11 +235,13 @@
     </div>
 
     <script>
+        // ─── Supabase ───
         const supabaseClient = window.supabase.createClient(
             'https://ncecqssxcmmbkbnokjqd.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWNxc3N4Y21tYmtibm9ranFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjkwMjgsImV4cCI6MjA5MTEwNTAyOH0.PitKp7H_oG8hXbbhdTT7OjLAzJ1JWv3N_ZSRbM84Xa4'
-        )
+        );
 
+        // ─── Auth ───
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
             if (session) showWritingScreen();
         });
@@ -278,11 +276,13 @@
             }
         }
 
+        // ─── State ───
         let currentRowId = null;
         let promptWasUsed = false;
         let selectedMood = null;
         let selectedFeelings = [];
 
+        // ─── Mood color maps ───
         const moodColors = {
             1: '#e8e8e8', 2: '#c8d4dc', 3: '#a8bfcf',
             4: '#7ea8c4', 5: '#5490b8', 6: '#3a78aa',
@@ -295,12 +295,14 @@
             7: '#2560a0', 8: '#1a4d8c', 9: '#0f3875', 10: '#08235e'
         };
 
+        // ─── Feelings list ───
         const feelingsList = {
             difficult: ['Anxious','Overwhelmed','Sad','Lonely','Frustrated','Irritable','Numb','Fearful','Ashamed','Disconnected','Restless','Heavy'],
             neutral: ['Uncertain','Contemplative','Tired','Distracted','Flat','Cautious','Waiting'],
             expansive: ['Calm','Grateful','Hopeful','Curious','Confident','Energized','Proud','Connected','Peaceful','Inspired','Clear','Joyful']
         };
 
+        // ─── Mood buttons ───
         function buildMoodButtons() {
             const container = document.getElementById('mood-buttons');
             for (let i = 1; i <= 10; i++) {
@@ -341,6 +343,21 @@
             }
         }
 
+        async function selectMood(score) {
+            selectedMood = score;
+            for (let i = 1; i <= 10; i++) {
+                document.getElementById(`mood-${i}`).style.opacity = i === score ? '1' : '0.3';
+            }
+            document.getElementById('mood-status').innerText = 'Saving...';
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { error } = await supabaseClient.from('mood').insert([{ score: score, user_id: user.id }]);
+            if (error) {
+                document.getElementById('mood-status').innerText = 'Error saving mood.';
+            } else {
+                document.getElementById('mood-status').innerText = `Mood ${score} logged.`;
+            }
+        }
+
         async function logMoodPost(score) {
             if (!currentRowId) {
                 document.getElementById('mood-post-status').innerText = 'No session to update.';
@@ -360,21 +377,15 @@
             }
         }
 
-        async function selectMood(score) {
-            selectedMood = score;
-            for (let i = 1; i <= 10; i++) {
-                document.getElementById(`mood-${i}`).style.opacity = i === score ? '1' : '0.3';
-            }
-            document.getElementById('mood-status').innerText = 'Saving...';
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const { error } = await supabaseClient.from('mood').insert([{ score: score, user_id: user.id }]);
-            if (error) {
-                document.getElementById('mood-status').innerText = 'Error saving mood.';
-            } else {
-                document.getElementById('mood-status').innerText = `Mood ${score} logged.`;
-            }
-        }
-
+        // ─── Feelings grid ───
+        /*
+            CSS Grid used here to create three columns —
+            Challenging, Neutral, Expansive.
+            Each column is a flex container vertically
+            stacking its checkboxes.
+            Grid handles the three-column layout.
+            Flex handles the alignment within each column.
+        */
         function buildFeelingsGrid() {
             const grid = document.getElementById('feelings-grid');
             grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
@@ -442,222 +453,120 @@
             btn.disabled = false;
         }
 
-        async function captureInspiration() {
-            const content = document.getElementById('inspiration-content').value;
-            if (!content.trim()) {
-                document.getElementById('inspiration-status').innerText = 'Write something first.';
-                return;
-            }
-            const btn = document.getElementById('inspire-btn');
-            if (btn.disabled) return;
-            btn.disabled = true;
-            document.getElementById('inspiration-status').innerText = 'Capturing...';
+        // ─── Prompt generation ───
+        async function generatePrompt() {
+            document.getElementById('prompt-btn').innerText = 'Generating...';
+            document.getElementById('prompt-display').innerText = '';
             const { data: { user } } = await supabaseClient.auth.getUser();
-            let latitude = null, longitude = null;
-            try {
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-                });
-                latitude = position.coords.latitude;
-                longitude = position.coords.longitude;
-            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
-            const response = await fetch('/api/inspire', {
+            const feelingsNote = document.getElementById('feelings-note').value;
+            const response = await fetch('/api/prompt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: content, source: '', userId: user.id, latitude: latitude, longitude: longitude })
+                body: JSON.stringify({
+                    userId: user.id,
+                    currentMood: selectedMood,
+                    currentFeelings: selectedFeelings,
+                    feelingsNote: feelingsNote || ''
+                })
+            });
+            const { prompt, rowId } = await response.json();
+            currentRowId = rowId;
+            promptWasUsed = false;
+            document.getElementById('prompt-display').innerText = prompt;
+            document.getElementById('prompt-btn').innerText = 'Generate Prompt';
+            document.getElementById('entry').addEventListener('input', function() {
+                promptWasUsed = true;
+            }, { once: true });
+        }
+
+        // ─── Entry submission and reflection ───
+        async function submitEntry() {
+            const entry = document.getElementById('entry').value;
+            if (!entry.trim()) return;
+            document.getElementById('reflection').innerText = 'Reflecting...';
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: recentEntries } = await supabaseClient
+                .from('entries')
+                .select('entry, reflection')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+            const { count } = await supabaseClient
+                .from('entries')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+            const response = await fetch('/api/reflect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    entry: entry,
+                    recentEntries: recentEntries || [],
+                    userId: user.id,
+                    totalEntryCount: count || 0,
+                    rowId: currentRowId,
+                    promptUsed: promptWasUsed
+                })
+            });
+            const { reflection, sessionRowId } = await response.json();
+            document.getElementById('reflection').innerText = reflection;
+            currentRowId = sessionRowId || currentRowId;
+            promptWasUsed = false;
+            buildMoodPostButtons();
+        }
+
+        // ─── Summary generation ───
+        let currentSummaryId = null;
+
+        async function generateSummary(days) {
+            document.getElementById('summary-status').innerText = 'Generating summary... this may take 20-30 seconds.';
+            document.getElementById('summary-output').style.display = 'none';
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const periodEnd = new Date().toISOString();
+            const periodStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+            const response = await fetch('/api/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    periodStart: periodStart,
+                    periodEnd: periodEnd,
+                    summaryType: 'custom'
+                })
             });
             const result = await response.json();
             if (result.success) {
-                const locationText = result.location ? ` · ${result.location}` : '';
-                const categoryText = result.category ? ` · ${result.category}` : '';
-                document.getElementById('inspiration-status').innerText = `Captured${categoryText}${locationText}`;
-                document.getElementById('inspiration-content').value = '';
+                currentSummaryId = result.summaryId;
+                const s = result.sections;
+                document.getElementById('summary-s1').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">The Period</p><div style="line-height:1.8; color:#444;">${s.section1_period}</div>`;
+                document.getElementById('summary-s2').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Mood Arc</p><div style="line-height:1.8; color:#444;">${s.section2_mood}</div>`;
+                document.getElementById('summary-s3').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Reflection Distillation</p><div style="line-height:1.8; color:#444;">${s.section3_reflections}</div>`;
+                document.getElementById('summary-s4').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Language and Tone Drift</p><div style="line-height:1.8; color:#444;">${s.section4_language}</div>`;
+                document.getElementById('summary-s5').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Your Words</p><div style="line-height:1.8; color:#444; font-style:italic;">${s.section5_your_words}</div>`;
+                document.getElementById('summary-s6').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Tool Intelligence</p><div style="line-height:1.8; color:#444;">${s.section6_tools}</div>`;
+                document.getElementById('summary-s7').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Progression Markers</p><div style="line-height:1.8; color:#444;">${s.section7_progression}</div>`;
+                document.getElementById('summary-s8').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Forward</p><div style="line-height:1.8; color:#444;">${s.section8_forward}</div>`;
+                document.getElementById('summary-output').style.display = 'block';
+                document.getElementById('summary-status').innerText = `Summary generated · ${days} day${days > 1 ? 's' : ''}`;
             } else {
-                document.getElementById('inspiration-status').innerText = 'Error capturing inspiration.';
+                document.getElementById('summary-status').innerText = 'Error generating summary: ' + (result.error || 'unknown error');
+            }
+        }
+
+        async function saveSummaryNotes() {
+            const notes = document.getElementById('summary-notes').value;
+            if (!notes.trim() || !currentSummaryId) return;
+            const btn = document.getElementById('summary-notes-btn');
+            btn.disabled = true;
+            const { error } = await supabaseClient.from('summaries').update({ user_notes: notes }).eq('id', currentSummaryId);
+            if (error) {
+                document.getElementById('summary-notes-status').innerText = 'Error saving notes.';
+            } else {
+                document.getElementById('summary-notes-status').innerText = 'Notes saved.';
             }
             btn.disabled = false;
         }
 
-        async function captureFieldNote() {
-            const content = document.getElementById('fieldnote-content').value;
-            if (!content.trim()) {
-                document.getElementById('fieldnote-status').innerText = 'Write something first.';
-                return;
-            }
-            const btn = document.getElementById('fieldnote-btn');
-            if (btn.disabled) return;
-            btn.disabled = true;
-            document.getElementById('fieldnote-status').innerText = 'Capturing...';
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            let latitude = null, longitude = null;
-            try {
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-                });
-                latitude = position.coords.latitude;
-                longitude = position.coords.longitude;
-            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
-            const response = await fetch('/api/fieldnote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: content, userId: user.id, latitude: latitude, longitude: longitude })
-            });
-            const result = await response.json();
-            if (result.success) {
-                const locationText = result.location ? ` · ${result.location}` : '';
-                document.getElementById('fieldnote-status').innerText = `Captured${locationText}`;
-                document.getElementById('fieldnote-content').value = '';
-            } else {
-                document.getElementById('fieldnote-status').innerText = 'Error capturing field note.';
-            }
-            btn.disabled = false;
-        }
-
-        async function logUndertow() {
-            const entry = document.getElementById('undertow-entry').value;
-            if (!entry.trim()) {
-                document.getElementById('undertow-status').innerText = 'Write something first.';
-                return;
-            }
-            const btn = document.getElementById('undertow-btn');
-            if (btn.disabled) return;
-            btn.disabled = true;
-            document.getElementById('undertow-status').innerText = 'Capturing...';
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            let latitude = null, longitude = null;
-            try {
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-                });
-                latitude = position.coords.latitude;
-                longitude = position.coords.longitude;
-            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
-            const response = await fetch('/api/undertow', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ undertowEntry: entry, userId: user.id, latitude: latitude, longitude: longitude })
-            });
-            const result = await response.json();
-            if (result.success) {
-                const locationText = result.location ? ` · ${result.location}` : '';
-                document.getElementById('undertow-status').innerText = `Captured${locationText}`;
-                document.getElementById('undertow-entry').value = '';
-            } else {
-                document.getElementById('undertow-status').innerText = 'Error logging.';
-            }
-            btn.disabled = false;
-        }
-
-        let selectedTools = [];
-        let currentToolLogIds = [];
-
-        async function buildToolboxButtons() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const { data: tools } = await supabaseClient.from('tool_index').select('name, category').eq('user_id', user.id).order('name');
-            const { data: unassignedTools } = await supabaseClient.from('tool_index').select('name, category').is('user_id', null).order('name');
-            const allTools = [...(tools || []), ...(unassignedTools || [])];
-            const stabilizers = allTools.filter(t => t.category === 'Stabilizer').sort((a, b) => a.name.localeCompare(b.name));
-            const regulators = allTools.filter(t => t.category === 'Regulator').sort((a, b) => a.name.localeCompare(b.name));
-            const expanders = allTools.filter(t => t.category === 'Expander').sort((a, b) => a.name.localeCompare(b.name));
-            buildCategoryButtons('stabilizer-buttons', stabilizers);
-            buildCategoryButtons('regulator-buttons', regulators);
-            buildCategoryButtons('expander-buttons', expanders);
-        }
-
-        function buildCategoryButtons(containerId, tools) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            tools.forEach(tool => {
-                const btn = document.createElement('button');
-                btn.innerText = tool.name;
-                btn.style.background = '#f5f5f0';
-                btn.style.color = '#555';
-                btn.style.border = '1px solid #ddd';
-                btn.style.padding = '6px 12px';
-                btn.style.fontSize = '0.8rem';
-                btn.style.cursor = 'pointer';
-                btn.style.marginTop = '0';
-                btn.id = `tool-btn-${tool.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}`;
-                btn.onclick = () => selectTool(tool.name);
-                container.appendChild(btn);
-            });
-        }
-
-        function selectTool(name) {
-            const btnId = `tool-btn-${name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}`;
-            const btn = document.getElementById(btnId);
-            if (selectedTools.includes(name)) {
-                selectedTools = selectedTools.filter(t => t !== name);
-                if (btn) { btn.style.background = '#f5f5f0'; btn.style.color = '#555'; }
-            } else {
-                selectedTools.push(name);
-                if (btn) { btn.style.background = '#2c2c2c'; btn.style.color = '#fff'; }
-            }
-            document.getElementById('toolbox-status').innerText = selectedTools.length > 0 ? `${selectedTools.length} tool${selectedTools.length > 1 ? 's' : ''} selected` : '';
-        }
-
-        async function logToolStack() {
-            if (selectedTools.length === 0) {
-                document.getElementById('toolbox-status').innerText = 'Select at least one tool.';
-                return;
-            }
-            const btn = document.getElementById('toolbox-btn');
-            if (btn.disabled) return;
-            btn.disabled = true;
-            document.getElementById('toolbox-status').innerText = 'Logging stack...';
-            document.getElementById('toolbox-summary').innerText = '';
-            document.getElementById('toolbox-feedback-section').style.display = 'none';
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const note = document.getElementById('toolbox-note').value;
-            let latitude = null, longitude = null;
-            try {
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-                });
-                latitude = position.coords.latitude;
-                longitude = position.coords.longitude;
-            } catch (geoError) { console.log('Geolocation unavailable:', geoError); }
-            const response = await fetch('/api/toolbox', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ toolNames: selectedTools, note: note || '', userId: user.id, latitude: latitude, longitude: longitude })
-            });
-            const result = await response.json();
-            if (result.success) {
-                const locationText = result.location ? ` · ${result.location}` : '';
-                document.getElementById('toolbox-status').innerText = `${result.toolCount} tool${result.toolCount > 1 ? 's' : ''} logged · ${result.timeOfDay}${locationText}`;
-                if (result.stackSummary) {
-                    document.getElementById('toolbox-summary').innerText = result.stackSummary;
-                    document.getElementById('toolbox-feedback-section').style.display = 'block';
-                }
-                const { data: recentLogs } = await supabaseClient.from('tool_log').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(selectedTools.length);
-                currentToolLogIds = recentLogs ? recentLogs.map(l => l.id) : [];
-                selectedTools.forEach(name => {
-                    const btnId = `tool-btn-${name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}`;
-                    const toolBtn = document.getElementById(btnId);
-                    if (toolBtn) { toolBtn.style.background = '#f5f5f0'; toolBtn.style.color = '#555'; }
-                });
-                selectedTools = [];
-                document.getElementById('toolbox-note').value = '';
-            } else {
-                document.getElementById('toolbox-status').innerText = 'Error logging stack.';
-            }
-            btn.disabled = false;
-        }
-
-        async function saveToolFeedback() {
-            const feedback = document.getElementById('toolbox-feedback').value;
-            if (!feedback.trim()) return;
-            const feedbackBtn = document.getElementById('feedback-btn');
-            feedbackBtn.disabled = true;
-            if (currentToolLogIds.length > 0) {
-                await Promise.all(currentToolLogIds.map(id => supabaseClient.from('tool_log').update({ user_feedback: feedback }).eq('id', id)));
-            }
-            document.getElementById('feedback-status').innerText = 'Note saved.';
-            document.getElementById('toolbox-feedback').value = '';
-            feedbackBtn.disabled = false;
-        }
-
+        // ─── Archive ───
         let archivePage = { summaries: 1, reflections: 1 };
 
         async function loadArchive(type) {
@@ -791,96 +700,10 @@
             btn.disabled = false;
         }
 
-        let currentSummaryId = null;
-
-        async function generateSummary(days) {
-            document.getElementById('summary-status').innerText = 'Generating summary... this may take 20-30 seconds.';
-            document.getElementById('summary-output').style.display = 'none';
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const periodEnd = new Date().toISOString();
-            const periodStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-            const response = await fetch('/api/summary', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, periodStart: periodStart, periodEnd: periodEnd, summaryType: 'custom' })
-            });
-            const result = await response.json();
-            if (result.success) {
-                currentSummaryId = result.summaryId;
-                const s = result.sections;
-                document.getElementById('summary-s1').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">The Period</p><div style="line-height:1.8; color:#444;">${s.section1_period}</div>`;
-                document.getElementById('summary-s2').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Mood Arc</p><div style="line-height:1.8; color:#444;">${s.section2_mood}</div>`;
-                document.getElementById('summary-s3').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Reflection Distillation</p><div style="line-height:1.8; color:#444;">${s.section3_reflections}</div>`;
-                document.getElementById('summary-s4').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Language and Tone Drift</p><div style="line-height:1.8; color:#444;">${s.section4_language}</div>`;
-                document.getElementById('summary-s5').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Your Words</p><div style="line-height:1.8; color:#444; font-style:italic;">${s.section5_your_words}</div>`;
-                document.getElementById('summary-s6').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Tool Intelligence</p><div style="line-height:1.8; color:#444;">${s.section6_tools}</div>`;
-                document.getElementById('summary-s7').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Progression Markers</p><div style="line-height:1.8; color:#444;">${s.section7_progression}</div>`;
-                document.getElementById('summary-s8').innerHTML = `<p style="color:#888; font-size:0.75rem; letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase;">Forward</p><div style="line-height:1.8; color:#444;">${s.section8_forward}</div>`;
-                document.getElementById('summary-output').style.display = 'block';
-                document.getElementById('summary-status').innerText = `Summary generated · ${days} day${days > 1 ? 's' : ''}`;
-            } else {
-                document.getElementById('summary-status').innerText = 'Error generating summary: ' + (result.error || 'unknown error');
-            }
-        }
-
-        async function saveSummaryNotes() {
-            const notes = document.getElementById('summary-notes').value;
-            if (!notes.trim() || !currentSummaryId) return;
-            const btn = document.getElementById('summary-notes-btn');
-            btn.disabled = true;
-            const { error } = await supabaseClient.from('summaries').update({ user_notes: notes }).eq('id', currentSummaryId);
-            if (error) {
-                document.getElementById('summary-notes-status').innerText = 'Error saving notes.';
-            } else {
-                document.getElementById('summary-notes-status').innerText = 'Notes saved.';
-            }
-            btn.disabled = false;
-        }
-
-        async function generatePrompt() {
-            document.getElementById('prompt-btn').innerText = 'Generating...';
-            document.getElementById('prompt-display').innerText = '';
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const feelingsNote = document.getElementById('feelings-note').value;
-            const response = await fetch('/api/prompt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, currentMood: selectedMood, currentFeelings: selectedFeelings, feelingsNote: feelingsNote || '' })
-            });
-            const { prompt, rowId } = await response.json();
-            currentRowId = rowId;
-            promptWasUsed = false;
-            document.getElementById('prompt-display').innerText = prompt;
-            document.getElementById('prompt-btn').innerText = 'Generate Prompt';
-            document.getElementById('entry').addEventListener('input', function() {
-                promptWasUsed = true;
-            }, { once: true });
-        }
-
-        async function submitEntry() {
-            const entry = document.getElementById('entry').value;
-            if (!entry.trim()) return;
-            document.getElementById('reflection').innerText = 'Reflecting...';
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const { data: recentEntries } = await supabaseClient.from('entries').select('entry, reflection').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5);
-            const { count } = await supabaseClient.from('entries').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
-            const response = await fetch('/api/reflect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entry: entry, recentEntries: recentEntries || [], userId: user.id, totalEntryCount: count || 0, rowId: currentRowId, promptUsed: promptWasUsed })
-            });
-            const { reflection, sessionRowId } = await response.json();
-            document.getElementById('reflection').innerText = reflection;
-            currentRowId = sessionRowId || currentRowId;
-            promptWasUsed = false;
-            buildMoodPostButtons();
-        }
-
-        // Initialize on load
+        // ─── Initialize on load ───
         buildMoodButtons();
         buildMoodPostButtons();
         buildFeelingsGrid();
-        buildToolboxButtons();
 
     </script>
 </body>

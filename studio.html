@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirror — Studio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+
+        /* ─── Reset ─── */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ─── Page grid ─── */
+        /*
+            CSS Grid — page level structure.
+            grid-template-rows: auto 1fr auto
+            Three rows: header (shrinks to content),
+            main (expands to fill remaining space),
+            footer (shrinks to content).
+            min-height: 100vh ensures the grid always
+            fills the full viewport height.
+        */
+        body {
+            font-family: Georgia, serif;
+            background: #faf9f7;
+            color: #2c2c2c;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas:
+                "header"
+                "main"
+                "footer";
+        }
+
+        /* ─── Page header ─── */
+        /*
+            Flexbox — one dimension (row).
+            justify-content: space-between pushes
+            the wordmark left and the nav link right.
+            align-items: center vertically centers both.
+        */
+        .page-header {
+            grid-area: header;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 680px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 40px 24px 32px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .page-header .wordmark {
+            font-size: 1rem;
+            font-weight: normal;
+            color: #888;
+            letter-spacing: 0.08em;
+            text-decoration: none;
+        }
+
+        .page-header .nav-link {
+            font-size: 0.8rem;
+            color: #aaa;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .page-header .nav-link:hover {
+            color: #555;
+        }
+
+        /* ─── Page main ─── */
+        .page-main {
+            grid-area: main;
+            max-width: 680px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 48px 24px;
+        }
+
+        /* ─── Page footer ─── */
+        .page-footer {
+            grid-area: footer;
+            max-width: 680px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px;
+            border-top: 1px solid #eee;
+        }
+
+        .page-footer p {
+            font-size: 0.75rem;
+            color: #ccc;
+            letter-spacing: 0.04em;
+        }
+
+        /* ─── Section headings ─── */
+        .section-heading {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #888;
+            letter-spacing: 0.05em;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+        }
+
+        .subsection-heading {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        .subgroup-heading {
+            color: #aaa;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        /* ─── Divider ─── */
+        .divider {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 40px 0 32px;
+        }
+
+        /* ─── Form elements ─── */
+        textarea {
+            width: 100%;
+            border: 1px solid #ddd;
+            padding: 16px;
+            font-family: Georgia, serif;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            background: #fff;
+            resize: vertical;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+        }
+
+        button {
+            margin-top: 8px;
+            padding: 10px 24px;
+            background: #2c2c2c;
+            color: #fff;
+            border: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: Georgia, serif;
+        }
+
+        .btn-secondary {
+            background: #f5f5f0;
+            color: #555;
+            border: 1px solid #ddd;
+        }
+
+        /* ─── Flexbox button groups ─── */
+        /*
+            Flexbox — items in a row, wrapping when
+            they run out of space. gap puts space
+            between items without individual margins.
+        */
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        /* ─── Status messages ─── */
+        .status {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        /* ─── Section spacing ─── */
+        .section-block {
+            margin-bottom: 32px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Page header -->
+    <header class="page-header">
+        <a href="index.html" class="wordmark">Mirror</a>
+        <a href="index.html" class="nav-link">← Reflection Loop</a>
+    </header>
+
+    <!-- Page main -->
+    <main class="page-main" id="studio-content" style="display:none;">
+
+        <!-- Observation Gallery -->
+        <p class="section-heading">Observation Gallery</p>
+
+        <!-- Inspirations -->
+        <div class="section-block" id="inspiration-section">
+            <p class="subsection-heading">INSPIRATIONS</p>
+            <textarea id="inspiration-content" placeholder="What moved you today?" style="height:100px;"></textarea>
+            <button class="btn-secondary" onclick="captureInspiration()" id="inspire-btn">Capture</button>
+            <div class="status" id="inspiration-status"></div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Field Notes -->
+        <div class="section-block" id="fieldnote-section">
+            <p class="subsection-heading">FIELD NOTES</p>
+            <textarea id="fieldnote-content" placeholder="Note something you observed..." style="height:100px;"></textarea>
+            <button class="btn-secondary" onclick="captureFieldNote()" id="fieldnote-btn">Capture</button>
+            <div class="status" id="fieldnote-status"></div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Undertows -->
+        <div class="section-block" id="undertow-section">
+            <p class="subsection-heading">UNDERTOWS</p>
+            <textarea id="undertow-entry" placeholder="What's pulling you down?" style="height:120px;"></textarea>
+            <button class="btn-secondary" onclick="logUndertow()" id="undertow-btn">Capture</button>
+            <div class="status" id="undertow-status"></div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Toolbox -->
+        <p class="section-heading">Toolbox</p>
+
+        <div class="section-block" id="toolbox-section">
+            <div id="toolbox-time-label" class="subsection-heading"></div>
+            <div id="toolbox-stabilizers" style="margin-bottom:20px;">
+                <p class="subgroup-heading">STABILIZERS</p>
+                <div id="stabilizer-buttons" class="btn-group"></div>
+            </div>
+            <div id="toolbox-regulators" style="margin-bottom:20px;">
+                <p class="subgroup-heading">REGULATORS</p>
+                <div id="regulator-buttons" class="btn-group"></div>
+            </div>
+            <div id="toolbox-expanders" style="margin-bottom:20px;">
+                <p class="subgroup-heading">EXPANDERS</p>
+                <div id="expander-buttons" class="btn-group"></div>
+            </div>
+            <textarea id="toolbox-note" placeholder="Optional note about this stack..." style="height:60px;"></textarea>
+            <button class="btn-secondary" onclick="logToolStack()" id="toolbox-btn">Log Stack</button>
+            <div class="status" id="toolbox-status"></div>
+            <div id="toolbox-summary" style="margin-top:24px; line-height:1.8; color:#444; font-size:0.95rem;"></div>
+            <div id="toolbox-feedback-section" style="display:none; margin-top:16px;">
+                <textarea id="toolbox-feedback" placeholder="How did it land? Optional." style="height:60px;"></textarea>
+                <button class="btn-secondary" onclick="saveToolFeedback()" id="feedback-btn">Save Note</button>
+                <div class="status" id="feedback-status"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Page footer -->
+    <footer class="page-footer">
+        <p>Mirror Studio · Working features in development</p>
+    </footer>
+
+    <script>
+        // ─── Supabase ───
+        // Replace with your Mirror Slim Supabase credentials
+        const supabaseClient = window.supabase.createClient(
+            'https://ncecqssxcmmbkbnokjqd.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWNxc3N4Y21tYmtibm9ranFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjkwMjgsImV4cCI6MjA5MTEwNTAyOH0.PitKp7H_oG8hXbbhdTT7OjLAzJ1JWv3N_ZSRbM84Xa4'
+        );
+
+        // ─── Auth check ───
+        // Studio requires sign-in. If no session
+        // exists redirect to index.html for sign-in.
+        async function initStudio() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = session.user;
+            document.getElementById('studio-content').style.display = 'block';
+            await loadToolbox();
+        }
+
+        let currentUser = null;
+
+        // ─── Inspirations ───
+        async function captureInspiration() {
+            const content = document.getElementById('inspiration-content').value.trim();
+            if (!content) return;
+            document.getElementById('inspire-btn').textContent = 'Capturing...';
+
+            let location = null;
+            try {
+                const pos = await new Promise((res, rej) =>
+                    navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+                );
+                const { latitude, longitude } = pos.coords;
+                const geoRes = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+                );
+                const geoData = await geoRes.json();
+                location = geoData.display_name || null;
+            } catch {}
+
+            const haiku = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': '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',
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: 100,
+                    messages: [{
+                        role: 'user',
+                        content: `Extract the single most evocative word or short phrase (2-4 words max) that captures the feeling or essence of this inspiration. Return only the word or phrase, nothing else:\n\n${content}`
+                    }]
+                })
+            });
+            const haikuData = await haiku.json();
+            const category = haikuData.content?.[0]?.text?.trim() || 'Uncategorized';
+
+            const feelingRes = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': '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',
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: 50,
+                    messages: [{
+                        role: 'user',
+                        content: `What feeling does this inspiration evoke? Return only 1-3 words describing the feeling, nothing else:\n\n${content}`
+                    }]
+                })
+            });
+            const feelingData = await feelingRes.json();
+            const feelingEvoked = feelingData.content?.[0]?.text?.trim() || null;
+
+            await supabaseClient.from('inspirations').insert([{
+                content,
+                category,
+                feeling_evoked: feelingEvoked,
+                location,
+                user_id: currentUser.id
+            }]);
+
+            document.getElementById('inspiration-content').value = '';
+            document.getElementById('inspire-btn').textContent = 'Capture';
+            document.getElementById('inspiration-status').textContent = 'Captured.';
+            setTimeout(() => {
+                document.getElementById('inspiration-status').textContent = '';
+            }, 3000);
+        }
+
+        // ─── Field Notes ───
+        async function captureFieldNote() {
+            const content = document.getElementById('fieldnote-content').value.trim();
+            if (!content) return;
+            document.getElementById('fieldnote-btn').textContent = 'Capturing...';
+
+            let location = null;
+            try {
+                const pos = await new Promise((res, rej) =>
+                    navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+                );
+                const { latitude, longitude } = pos.coords;
+                const geoRes = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+                );
+                const geoData = await geoRes.json();
+                location = geoData.display_name || null;
+            } catch {}
+
+            const themeRes = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': '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',
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: 50,
+                    messages: [{
+                        role: 'user',
+                        content: `Extract a single theme word from this field note. Return only the word, nothing else:\n\n${content}`
+                    }]
+                })
+            });
+            const themeData = await themeRes.json();
+            const theme = themeData.content?.[0]?.text?.trim() || null;
+
+            await supabaseClient.from('field_notes').insert([{
+                content,
+                theme,
+                location,
+                user_id: currentUser.id
+            }]);
+
+            document.getElementById('fieldnote-content').value = '';
+            document.getElementById('fieldnote-btn').textContent = 'Capture';
+            document.getElementById('fieldnote-status').textContent = 'Noted.';
+            setTimeout(() => {
+                document.getElementById('fieldnote-status').textContent = '';
+            }, 3000);
+        }
+
+        // ─── Undertows ───
+        async function logUndertow() {
+            const entry = document.getElementById('undertow-entry').value.trim();
+            if (!entry) return;
+            document.getElementById('undertow-btn').textContent = 'Capturing...';
+
+            const classifyRes = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': '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',
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: 100,
+                    messages: [{
+                        role: 'user',
+                        content: `Identify the primary cognitive pattern in this thought. Return only one of these exact labels: permanence, pervasiveness, personalization, hopelessness, isolation, identity_fusion, or other. Return only the label, nothing else:\n\n${entry}`
+                    }]
+                })
+            });
+            const classifyData = await classifyRes.json();
+            const patternTag = classifyData.content?.[0]?.text?.trim() || 'other';
+
+            await supabaseClient.from('undertow_log').insert([{
+                undertow_name: 'self-logged',
+                trigger_note: entry,
+                pattern_tag: patternTag,
+                user_id: currentUser.id
+            }]);
+
+            document.getElementById('undertow-entry').value = '';
+            document.getElementById('undertow-btn').textContent = 'Capture';
+            document.getElementById('undertow-status').textContent = 'Logged.';
+            setTimeout(() => {
+                document.getElementById('undertow-status').textContent = '';
+            }, 3000);
+        }
+
+        // ─── Toolbox ───
+        async function loadToolbox() {
+            const hour = new Date().getHours();
+            let timeLabel = '';
+            if (hour >= 5 && hour < 12) timeLabel = 'MORNING STACK';
+            else if (hour >= 12 && hour < 17) timeLabel = 'AFTERNOON STACK';
+            else if (hour >= 17 && hour < 21) timeLabel = 'EVENING STACK';
+            else timeLabel = 'NIGHT STACK';
+            document.getElementById('toolbox-time-label').textContent = timeLabel;
+
+            const { data: tools } = await supabaseClient
+                .from('tool_index')
+                .select('name, category, description')
+                .eq('user_id', currentUser.id)
+                .order('name');
+
+            if (!tools || tools.length === 0) return;
+
+            const stabilizers = tools.filter(t => t.category === 'Stabilizer');
+            const regulators = tools.filter(t => t.category === 'Regulator');
+            const expanders = tools.filter(t => t.category === 'Expander');
+
+            renderToolButtons(stabilizers, 'stabilizer-buttons');
+            renderToolButtons(regulators, 'regulator-buttons');
+            renderToolButtons(expanders, 'expander-buttons');
+        }
+
+        const selectedTools = new Set();
+
+        function renderToolButtons(tools, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            tools.forEach(tool => {
+                const btn = document.createElement('button');
+                btn.textContent = tool.name;
+                btn.className = 'btn-secondary';
+                btn.style.fontSize = '0.8rem';
+                btn.style.padding = '6px 12px';
+                btn.style.marginTop = '0';
+                btn.onclick = () => {
+                    if (selectedTools.has(tool.name)) {
+                        selectedTools.delete(tool.name);
+                        btn.style.background = '#f5f5f0';
+                        btn.style.color = '#555';
+                    } else {
+                        selectedTools.add(tool.name);
+                        btn.style.background = '#2c2c2c';
+                        btn.style.color = '#fff';
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        async function logToolStack() {
+            if (selectedTools.size === 0) return;
+            document.getElementById('toolbox-btn').textContent = 'Logging...';
+            const note = document.getElementById('toolbox-note').value.trim();
+            const toolList = Array.from(selectedTools).join(', ');
+
+            const summaryRes = await fetch('/api/toolbox', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tools: Array.from(selectedTools),
+                    note,
+                    userId: currentUser.id
+                })
+            });
+            const summaryData = await summaryRes.json();
+
+            document.getElementById('toolbox-summary').textContent = summaryData.summary || '';
+            document.getElementById('toolbox-status').textContent = `Stack logged: ${toolList}`;
+            document.getElementById('toolbox-btn').textContent = 'Log Stack';
+            document.getElementById('toolbox-note').value = '';
+
+            if (summaryData.logId) {
+                document.getElementById('toolbox-feedback-section').style.display = 'block';
+                document.getElementById('toolbox-feedback-section').dataset.logId = summaryData.logId;
+            }
+
+            selectedTools.clear();
+            document.querySelectorAll('#stabilizer-buttons button, #regulator-buttons button, #expander-buttons button')
+                .forEach(btn => {
+                    btn.style.background = '#f5f5f0';
+                    btn.style.color = '#555';
+                });
+        }
+
+        async function saveToolFeedback() {
+            const feedback = document.getElementById('toolbox-feedback').value.trim();
+            if (!feedback) return;
+            const logId = document.getElementById('toolbox-feedback-section').dataset.logId;
+            await supabaseClient
+                .from('tool_log')
+                .update({ user_feedback: feedback })
+                .eq('id', logId);
+            document.getElementById('toolbox-feedback').value = '';
+            document.getElementById('feedback-status').textContent = 'Note saved.';
+            setTimeout(() => {
+                document.getElementById('feedback-status').textContent = '';
+            }, 3000);
+        }
+
+        // ─── Initialize ───
+        initStudio();
+    </script>
+
+</body>
+</html>
