@@ -311,55 +311,24 @@
                 location = geoData.display_name || null;
             } catch {}
 
-            const haiku = await fetch('https://api.anthropic.com/v1/messages', {
+const response = await fetch('/api/inspire', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': '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',
-                    'anthropic-version': '2023-06-01'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'claude-haiku-4-5-20251001',
-                    max_tokens: 100,
-                    messages: [{
-                        role: 'user',
-                        content: `Extract the single most evocative word or short phrase (2-4 words max) that captures the feeling or essence of this inspiration. Return only the word or phrase, nothing else:\n\n${content}`
-                    }]
+                    content: content,
+                    source: '',
+                    userId: currentUser.id,
+                    latitude: latitude,
+                    longitude: longitude
                 })
             });
-            const haikuData = await haiku.json();
-            const category = haikuData.content?.[0]?.text?.trim() || 'Uncategorized';
-
-            const feelingRes = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': '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',
-                    'anthropic-version': '2023-06-01'
-                },
-                body: JSON.stringify({
-                    model: 'claude-haiku-4-5-20251001',
-                    max_tokens: 50,
-                    messages: [{
-                        role: 'user',
-                        content: `What feeling does this inspiration evoke? Return only 1-3 words describing the feeling, nothing else:\n\n${content}`
-                    }]
-                })
-            });
-            const feelingData = await feelingRes.json();
-            const feelingEvoked = feelingData.content?.[0]?.text?.trim() || null;
-
-            await supabaseClient.from('inspirations').insert([{
-                content,
-                category,
-                feeling_evoked: feelingEvoked,
-                location,
-                user_id: currentUser.id
-            }]);
+            const result = await response.json();
 
             document.getElementById('inspiration-content').value = '';
             document.getElementById('inspire-btn').textContent = 'Capture';
-            document.getElementById('inspiration-status').textContent = 'Captured.';
+            document.getElementById('inspiration-status').textContent = result.success
+                ? `Captured · ${result.category || ''}`
+                : 'Error capturing.';
             setTimeout(() => {
                 document.getElementById('inspiration-status').textContent = '';
             }, 3000);
@@ -384,39 +353,27 @@
                 location = geoData.display_name || null;
             } catch {}
 
-            const themeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch('/api/fieldnote', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': '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',
-                    'anthropic-version': '2023-06-01'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'claude-haiku-4-5-20251001',
-                    max_tokens: 50,
-                    messages: [{
-                        role: 'user',
-                        content: `Extract a single theme word from this field note. Return only the word, nothing else:\n\n${content}`
-                    }]
+                    content: content,
+                    userId: currentUser.id,
+                    latitude: latitude,
+                    longitude: longitude
                 })
             });
-            const themeData = await themeRes.json();
-            const theme = themeData.content?.[0]?.text?.trim() || null;
-
-            await supabaseClient.from('field_notes').insert([{
-                content,
-                theme,
-                location,
-                user_id: currentUser.id
-            }]);
+            const result = await response.json();
 
             document.getElementById('fieldnote-content').value = '';
             document.getElementById('fieldnote-btn').textContent = 'Capture';
-            document.getElementById('fieldnote-status').textContent = 'Noted.';
+            document.getElementById('fieldnote-status').textContent = result.success
+                ? 'Noted.'
+                : 'Error capturing.';
             setTimeout(() => {
                 document.getElementById('fieldnote-status').textContent = '';
             }, 3000);
-        }
+        }    
 
         // ─── Undertows ───
         async function logUndertow() {
@@ -424,35 +381,23 @@
             if (!entry) return;
             document.getElementById('undertow-btn').textContent = 'Capturing...';
 
-            const classifyRes = await fetch('https://api.anthropic.com/v1/messages', {
+            const response = await fetch('/api/undertow', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': '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',
-                    'anthropic-version': '2023-06-01'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'claude-haiku-4-5-20251001',
-                    max_tokens: 100,
-                    messages: [{
-                        role: 'user',
-                        content: `Identify the primary cognitive pattern in this thought. Return only one of these exact labels: permanence, pervasiveness, personalization, hopelessness, isolation, identity_fusion, or other. Return only the label, nothing else:\n\n${entry}`
-                    }]
+                    undertowEntry: entry,
+                    userId: currentUser.id,
+                    latitude: null,
+                    longitude: null
                 })
             });
-            const classifyData = await classifyRes.json();
-            const patternTag = classifyData.content?.[0]?.text?.trim() || 'other';
-
-            await supabaseClient.from('undertow_log').insert([{
-                undertow_name: 'self-logged',
-                trigger_note: entry,
-                pattern_tag: patternTag,
-                user_id: currentUser.id
-            }]);
+            const result = await response.json();
 
             document.getElementById('undertow-entry').value = '';
             document.getElementById('undertow-btn').textContent = 'Capture';
-            document.getElementById('undertow-status').textContent = 'Logged.';
+            document.getElementById('undertow-status').textContent = result.success
+                ? 'Logged.'
+                : 'Error logging.';
             setTimeout(() => {
                 document.getElementById('undertow-status').textContent = '';
             }, 3000);
