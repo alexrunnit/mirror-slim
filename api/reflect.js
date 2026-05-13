@@ -51,6 +51,36 @@ if (sensitiveRelationships && sensitiveRelationships.length > 0) {
         .join('\n');
 }
 
+// Pull observed undertows as sensitive context
+// Lens for drift detection only — never surfaced directly
+const { data: observedUndertows } = await supabaseClient
+    .from('guest_profile_v2')
+    .select('name, content')
+    .eq('category', 'Observed Undertows')
+    .eq('status', 'active');
+
+let undertowsContext = '';
+if (observedUndertows && observedUndertows.length > 0) {
+    undertowsContext = observedUndertows
+        .map(u => `${u.name}: ${u.content}`)
+        .join('\n');
+}
+
+// Pull observed fair winds
+// Priority aperture material — sources of aliveness confirmed in writing
+const { data: fairWinds } = await supabaseClient
+    .from('guest_profile_v2')
+    .select('name, content')
+    .eq('category', 'Observed Fair Winds')
+    .eq('status', 'active');
+
+let fairWindsContext = '';
+if (fairWinds && fairWinds.length > 0) {
+    fairWindsContext = fairWinds
+        .map(f => `${f.name}: ${f.content}`)
+        .join('\n');
+}
+
     // Pull stated and observed values
     const { data: guestValues } = await supabaseClient
         .from('guest_profile_v2')
@@ -486,6 +516,8 @@ GUEST CONTEXT
 
 ${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
 ${sensitiveRelationshipsContext ? `SIGNIFICANT RELATIONSHIPS (held for tonal awareness — never surface names or dynamics in output):\n${sensitiveRelationshipsContext}\n` : ''}
+${undertowsContext ? `OBSERVED UNDERTOWS (sensitive — lens for drift detection only — never surface directly — never use as aperture):\n${undertowsContext}\n` : ''}
+${fairWindsContext ? `OBSERVED FAIR WINDS (priority aperture material — sources of confirmed aliveness — open toward what these touch not the activity itself):\n${fairWindsContext}\n` : ''}
 ${observationsContext ? `MIRROR OBSERVATIONS (detected across sessions):\n${observationsContext}\n` : ''}
 ${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
