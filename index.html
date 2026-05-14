@@ -102,6 +102,40 @@
             font-size: 0.9rem;
         }
 
+        /* ─── Guest highlights ─── */
+        mark {
+            background: #fff3b0;
+            color: inherit;
+            border-radius: 2px;
+            padding: 1px 0;
+        }
+
+        #highlight-btn {
+            color: #f5c518;
+            transition: transform 0.15s ease, color 0.15s ease;
+            opacity: 0.3;
+        }
+
+        #highlight-btn:hover {
+            color: #f5c518;
+            transform: scale(1.2);
+        }
+
+        #highlight-btn.active {
+            color: #f5c518;
+        }
+
+        @keyframes starPulse {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(1.5); }
+            70%  { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        #highlight-btn.pulse {
+            animation: starPulse 0.4s ease forwards;
+        }
+
     </style>
 </head>
 <body>
@@ -156,6 +190,15 @@
         <button onclick="submitEntry()">Reflect</button>
 
         <div id="reflection"></div>
+
+        <!-- Highlight mechanism -->
+        <div id="highlight-section" style="display:none; margin-top:24px;">
+            <div id="highlight-toolbar" style="display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-top:1px solid #eee;">
+                <span style="font-size:0.75rem; color:#ccc; letter-spacing:0.05em;">Select a passage · tap the star to keep it.</span>
+                <button onclick="saveHighlight()" id="highlight-btn" style="background:none; border:none; font-size:1.4rem; cursor:pointer; padding:4px 8px; margin-top:0; line-height:1;">☆</button>
+            </div>
+            <div id="highlight-status" style="font-size:0.8rem; color:#888; margin-top:4px;"></div>
+        </div>
 
         <!-- Post-writing mood -->
         <div id="mood-post-section" style="display:block; margin-top:32px;">
@@ -483,6 +526,10 @@
         async function submitEntry() {
             const entry = document.getElementById('entry').value;
             if (!entry.trim()) return;
+
+            // Reset highlights from any previous session
+            resetHighlights();
+
             document.getElementById('reflection').innerText = 'Reflecting...';
             const { data: { user } } = await supabaseClient.auth.getUser();
             const { data: recentEntries } = await supabaseClient
@@ -508,10 +555,201 @@
                 })
             });
             const { reflection, sessionRowId } = await response.json();
-            document.getElementById('reflection').innerText = reflection;
+
+            // innerHTML instead of innerText so mark tags
+            // render as yellow highlights in the archive
+            document.getElementById('reflection').innerHTML = reflection;
             currentRowId = sessionRowId || currentRowId;
             promptWasUsed = false;
             buildMoodPostButtons();
+
+            // Initialize highlight mechanism now that
+            // the reflection is visible on screen
+            initHighlightMechanism();
+        }
+
+        // ─── Guest highlight mechanism ───
+        /*
+            The Selection API — window.getSelection() —
+            tracks what text the user has selected on the
+            page at any moment. We listen for mouseup events
+            on the reflection div. When the user finishes
+            a click-drag selection mouseup fires and we
+            check if anything was selected.
+
+            If yes — show the star button active.
+            If no — keep it dimmed.
+
+            When the guest taps the star:
+            1. Get the selected text
+            2. Wrap it in a mark tag — turns yellow instantly
+            3. Star pulses gold — visual confirmation
+            4. Write to both Supabase columns
+            5. Run Haiku analysis in background
+        */
+
+        let currentHighlights = [];
+        let highlightMechanismInitialized = false;
+
+        function initHighlightMechanism() {
+            const reflectionDiv = document.getElementById('reflection');
+
+            // Show the highlight section now that
+            // a reflection exists to highlight
+            document.getElementById('highlight-section').style.display = 'block';
+
+            // Only attach event listeners once
+            // even if submitEntry is called multiple times
+            if (highlightMechanismInitialized) return;
+            highlightMechanismInitialized = true;
+
+            // Listen for mouseup on the reflection div
+            // mouseup fires when the user releases the mouse
+            // after a click or drag — the moment selection completes
+            reflectionDiv.addEventListener('mouseup', () => {
+                const selection = window.getSelection();
+
+                // toString() returns selected text as plain string
+                // empty string means nothing is selected
+                if (selection && selection.toString().trim().length > 0) {
+                    const btn = document.getElementById('highlight-btn');
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                }
+            });
+
+            // Dim star when clicking away with nothing selected
+            document.addEventListener('mouseup', (e) => {
+                const reflectionDiv = document.getElementById('reflection');
+                const highlightSection = document.getElementById('highlight-section');
+                if (!reflectionDiv.contains(e.target) && !highlightSection.contains(e.target)) {
+                    const selection = window.getSelection();
+                    if (!selection || selection.toString().trim().length === 0) {
+                        if (currentHighlights.length === 0) {
+                            const btn = document.getElementById('highlight-btn');
+                            btn.style.opacity = '0.3';
+                        }
+                    }
+                }
+            });
+        }
+
+        async function saveHighlight() {
+            const selection = window.getSelection();
+            if (!selection || selection.toString().trim().length === 0) {
+                document.getElementById('highlight-status').textContent = 'Select a passage first.';
+                return;
+            }
+
+            const selectedText = selection.toString().trim();
+            const reflectionDiv = document.getElementById('reflection');
+
+            // Confirm selection is inside the reflection div
+            if (!reflectionDiv.contains(selection.anchorNode)) {
+                document.getElementById('highlight-status').textContent = 'Select text from the reflection above.';
+                return;
+            }
+
+            // ─── Visual confirmation — star pulses gold ───
+            /*
+                The star fills and pulses immediately on tap.
+                void highlightBtn.offsetWidth forces the browser
+                to recalculate layout — this restarts the CSS
+                animation even if tapped multiple times.
+            */
+            const highlightBtn = document.getElementById('highlight-btn');
+            highlightBtn.textContent = '★';
+            highlightBtn.classList.add('active');
+            highlightBtn.classList.remove('pulse');
+            void highlightBtn.offsetWidth;
+            highlightBtn.classList.add('pulse');
+
+            // ─── DOM manipulation — wrap in mark tag ───
+            /*
+                getRangeAt(0) gets the exact range of the
+                selection — start and end positions in the DOM.
+                surroundContents wraps the selected content
+                in the mark element we create.
+                The browser renders the yellow highlight instantly.
+            */
+            try {
+                const range = selection.getRangeAt(0);
+                const mark = document.createElement('mark');
+                range.surroundContents(mark);
+                selection.removeAllRanges();
+            } catch (e) {
+                document.getElementById('highlight-status').textContent = 'Select within a single paragraph.';
+                highlightBtn.textContent = '☆';
+                highlightBtn.classList.remove('active', 'pulse');
+                return;
+            }
+
+            // Add to local highlights array
+            currentHighlights.push(selectedText);
+
+            // ─── Two Supabase writes in one call ───
+            /*
+                guest_highlights — clean text array for the engine
+                reflection_highlighted — full HTML with mark tags
+                Both update the same row using currentRowId.
+            */
+            if (currentRowId) {
+                const { error } = await supabaseClient
+                    .from('entries')
+                    .update({
+                        guest_highlights: currentHighlights,
+                        reflection_highlighted: reflectionDiv.innerHTML
+                    })
+                    .eq('id', currentRowId);
+
+                if (error) {
+                    document.getElementById('highlight-status').textContent = 'Error saving.';
+                    return;
+                }
+            }
+
+            // Quiet count — only appears after second highlight
+            document.getElementById('highlight-status').textContent =
+                currentHighlights.length > 1
+                    ? `${currentHighlights.length} passages marked.`
+                    : '';
+
+            // ─── Haiku analysis — fire and forget ───
+            /*
+                No await — runs in the background.
+                Analyzes why the passage landed and writes
+                the interpretation to Reflection Preferences
+                in guest_profile_v2.
+            */
+            analyzeHighlight(selectedText);
+        }
+
+        async function analyzeHighlight(passage) {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                fetch('/api/highlight', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        passage: passage,
+                        userId: user.id,
+                        entryId: currentRowId
+                    })
+                });
+            } catch (e) {
+                console.log('Highlight analysis skipped:', e);
+            }
+        }
+
+        function resetHighlights() {
+            currentHighlights = [];
+            highlightMechanismInitialized = false;
+            document.getElementById('highlight-section').style.display = 'none';
+            document.getElementById('highlight-status').textContent = '';
+            const btn = document.getElementById('highlight-btn');
+            btn.textContent = '☆';
+            btn.classList.remove('active', 'pulse');
+            btn.style.opacity = '0.3';
         }
 
         // ─── Summary generation ───
@@ -653,12 +891,19 @@
                     const moodPostDot = e.mood_post ? `<span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:${moodColorMap[e.mood_post]}; margin-right:4px; vertical-align:middle;"></span><span style="font-size:0.85rem; color:#555;">${e.mood_post}</span>` : '';
                     const delta = e.mood_pre && e.mood_post ? (e.mood_post - e.mood_pre > 0 ? `+${e.mood_post - e.mood_pre}` : `${e.mood_post - e.mood_pre}`) : '';
                     const feelingTags = e.feelings && e.feelings.length > 0 ? e.feelings.map(f => `<span style="display:inline-block; background:#f5f5f0; color:#666; font-size:0.75rem; padding:2px 8px; margin:2px; border:1px solid #eee;">${f}</span>`).join('') : '';
-                    const reflectionPreview = e.reflection ? e.reflection.substring(0, 150) + (e.reflection.length > 150 ? '...' : '') : '';
+
+                    // Use reflection_highlighted if it exists
+                    // so yellow highlights appear in the archive
+                    const reflectionDisplay = e.reflection_highlighted || e.reflection || '';
+                    const reflectionPreview = e.reflection
+                        ? e.reflection.substring(0, 150) + (e.reflection.length > 150 ? '...' : '')
+                        : '';
+
                     const fullId = `reflection-full-${e.id}`;
                     const fullContent = `
                         ${e.prompt ? `<div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Prompt</p><div style="color:#888; font-size:0.9rem; font-style:italic; line-height:1.7;">${e.prompt}</div></div>` : ''}
                         <div style="margin-bottom:12px;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Entry</p><div style="color:#444; font-size:0.9rem; line-height:1.8;">${e.entry}</div></div>
-                        ${e.reflection ? `<div style="margin-top:12px; padding-top:12px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Full Reflection</p><div style="color:#555; font-size:0.9rem; line-height:1.8;">${e.reflection}</div></div>` : ''}
+                        ${reflectionDisplay ? `<div style="margin-top:12px; padding-top:12px; border-top:1px solid #eee;"><p style="color:#aaa; font-size:0.75rem; letter-spacing:0.05em; margin-bottom:4px; text-transform:uppercase;">Full Reflection</p><div style="color:#555; font-size:0.9rem; line-height:1.8;">${reflectionDisplay}</div></div>` : ''}
                     `;
                     div.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
