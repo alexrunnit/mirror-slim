@@ -113,7 +113,7 @@
         #highlight-btn {
             color: #f5c518;
             transition: transform 0.15s ease, color 0.15s ease;
-            opacity: 0.3;
+            opacity: 0.5;
         }
 
         #highlight-btn:hover {
@@ -191,14 +191,14 @@
 
         <div id="reflection"></div>
 
-        <!-- Highlight mechanism -->
-        <div id="highlight-section" style="display:none; margin-top:24px;">
-            <div id="highlight-toolbar" style="display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-top:1px solid #eee;">
-                <span style="font-size:0.75rem; color:#ccc; letter-spacing:0.05em;">Select a passage · tap the star to keep it.</span>
-                <button onclick="saveHighlight()" id="highlight-btn" style="background:none; border:none; font-size:1.4rem; cursor:pointer; padding:4px 8px; margin-top:0; line-height:1;">☆</button>
-            </div>
-            <div id="highlight-status" style="font-size:0.8rem; color:#888; margin-top:4px;"></div>
-        </div>
+        <<!-- Highlight mechanism -->
+<div id="highlight-section" style="display:none; margin-top:24px;">
+    <div id="highlight-toolbar" style="display:flex; align-items:center; justify-content:flex-start; gap:10px; padding:12px 0; border-top:1px solid #eee;">
+        <button onclick="saveHighlight()" id="highlight-btn" style="background:none; border:none; font-size:1.4rem; cursor:pointer; padding:0; margin-top:0; line-height:1;">☆</button>
+        <span style="font-size:0.75rem; color:#bbb; letter-spacing:0.05em;">Tap the star to highlight your favorite passages.</span>
+    </div>
+    <div id="highlight-status" style="font-size:0.8rem; color:#888; margin-top:4px;"></div>
+</div>
 
         <!-- Post-writing mood -->
         <div id="mood-post-section" style="display:block; margin-top:32px;">
