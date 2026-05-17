@@ -1,7 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
@@ -12,11 +10,16 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { passage, userId, entryId } = req.body;
+   const { passage, userId, entryId } = req.body;
 
-    if (!passage || !userId) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
+if (!passage || !userId) {
+    return res.status(400).json({ error: 'Missing required fields' });
+}
+
+if (!entryId) {
+    console.error('Highlight API — missing entryId');
+    return res.status(400).json({ error: 'Missing entryId' });
+}
 
     try {
         // ─── Pull all context in parallel ───
@@ -147,12 +150,19 @@ export default async function handler(req, res) {
             drift evidence, patterns the guest may not
             yet be conscious of.
         */
-        const analysisResponse = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 800,
-            messages: [{
-                role: 'user',
-                content: `You are the intelligence layer of Mirror, a journaling reflection tool. A guest has highlighted a passage from their reflection. The highlight text itself is already stored — your job is NOT to repeat it. Your job is to derive contextual insight from it.
+  const analysisResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{
+            role: 'user',
+            content: `You are the intelligence layer of Mirror, a journaling reflection tool. A guest has highlighted a passage from their reflection. The highlight text itself is already stored — your job is NOT to repeat it. Your job is to derive contextual insight from it.
 
 What does this highlight reveal about this guest? What themes are forming across their highlights? What is opening up in their thinking that they may not yet be conscious of? What aperture does this create for future writing prompts?
 
@@ -209,11 +219,13 @@ Return ONLY a JSON object. No preamble. No markdown. No backticks.
   "drift_evidence": "if this is evidence of behavioral or psychological drift — describe the direction of movement in one sentence. null if not applicable.",
   "reflection_preference": "one sentence describing what kind of Mirror observation this guest responds to — written as a calibration statement for future reflections. Be specific about register, depth, and structural pattern."
 }`
-            }]
-        });
+        }]
+    })
+});
 
-        const rawText = analysisResponse.content[0].text.trim();
-        console.log('Highlight API raw Haiku response:', rawText);
+const analysisData = await analysisResponse.json();
+const rawText = analysisData.content[0].text.trim();
+console.log('Highlight API raw Haiku response:', rawText);
 
         let analysis = null;
         try {
