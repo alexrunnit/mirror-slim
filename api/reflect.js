@@ -17,17 +17,99 @@ module.exports = async function handler(req, res) {
         process.env.SUPABASE_SERVICE_KEY
     );
 
-    // Pull non-sensitive persona fields
-    const { data: personaRows } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('category, name, content')
-        .eq('is_sensitive', false)
-        .eq('status', 'active');
+    // ─── Pull all context in parallel ───
+    /*
+        Eight simultaneous database reads instead of
+        sequential. Cuts context assembly wait time
+        significantly — all reads resolve together.
+    */
+    const [
+        personaRes,
+        relationshipsRes,
+        undertowsRes,
+        fairWindsRes,
+        reflectionPreferencesRes,
+        valuesRes,
+        observedValuesRes,
+        observationsRes,
+        summaryRes
+    ] = await Promise.all([
+
+        // Non-sensitive persona fields
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('category, name, content')
+            .eq('is_sensitive', false)
+            .eq('status', 'active'),
+
+        // Significant relationships — sensitive, tone only
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Significant Relationships')
+            .eq('status', 'active'),
+
+        // Observed undertows — sensitive, drift lens only
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Observed Undertows')
+            .eq('status', 'active'),
+
+        // Observed fair winds — priority aperture material
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Observed Fair Winds')
+            .eq('status', 'active'),
+
+        // Reflection preferences — calibrates register and depth
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('content')
+            .eq('category', 'Reflection Preferences')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(10),
+
+        // Stated values
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Stated Values')
+            .eq('status', 'active'),
+
+        // Observed values — detected in writing
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Observed Values')
+            .eq('status', 'active'),
+
+        // Engine observations — behavioral drift detected
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Engine Observations')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(20),
+
+        // Most recent summary
+        supabaseClient
+            .from('summaries')
+            .select('summary, summary_type')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+    ]);
+
+    // ─── Build context strings ───
 
     let personaContext = '';
-    if (personaRows && personaRows.length > 0) {
+    if (personaRes.data && personaRes.data.length > 0) {
         const grouped = {};
-        personaRows.forEach(row => {
+        personaRes.data.forEach(row => {
             if (!grouped[row.category]) grouped[row.category] = [];
             grouped[row.category].push(`${row.name}: ${row.content}`);
         });
@@ -36,117 +118,41 @@ module.exports = async function handler(req, res) {
             .join('\n\n');
     }
 
-    // Pull significant relationships as sensitive context
-    const { data: sensitiveRelationships } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Significant Relationships')
-        .eq('status', 'active');
+    const sensitiveRelationshipsContext = relationshipsRes.data?.length > 0
+        ? relationshipsRes.data.map(r => `${r.name}: ${r.content}`).join('\n')
+        : '';
 
-    let sensitiveRelationshipsContext = '';
-    if (sensitiveRelationships && sensitiveRelationships.length > 0) {
-        sensitiveRelationshipsContext = sensitiveRelationships
-            .map(r => `${r.name}: ${r.content}`)
-            .join('\n');
-    }
+    const undertowsContext = undertowsRes.data?.length > 0
+        ? undertowsRes.data.map(u => `${u.name}: ${u.content}`).join('\n')
+        : '';
 
-    // Pull observed undertows as sensitive context
-    const { data: observedUndertows } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Observed Undertows')
-        .eq('status', 'active');
+    const fairWindsContext = fairWindsRes.data?.length > 0
+        ? fairWindsRes.data.map(f => `${f.name}: ${f.content}`).join('\n')
+        : '';
 
-    let undertowsContext = '';
-    if (observedUndertows && observedUndertows.length > 0) {
-        undertowsContext = observedUndertows
-            .map(u => `${u.name}: ${u.content}`)
-            .join('\n');
-    }
-
-    // Pull observed fair winds
-    const { data: fairWinds } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Observed Fair Winds')
-        .eq('status', 'active');
-
-    let fairWindsContext = '';
-    if (fairWinds && fairWinds.length > 0) {
-        fairWindsContext = fairWinds
-            .map(f => `${f.name}: ${f.content}`)
-            .join('\n');
-    }
-
-    // Pull reflection preferences — what has landed for this guest
-    // Derived from guest highlights — calibrates register and depth
-    const { data: reflectionPreferences } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Reflection Preferences')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-    let reflectionPreferencesContext = '';
-    if (reflectionPreferences && reflectionPreferences.length > 0) {
-        reflectionPreferencesContext = reflectionPreferences
-            .map(r => r.content)
-            .join('\n');
-    }
-
-    // Pull stated and observed values
-    const { data: guestValues } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Stated Values')
-        .eq('status', 'active');
-
-    const { data: observedValues } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Observed Values')
-        .eq('status', 'active');
+    const reflectionPreferencesContext = reflectionPreferencesRes.data?.length > 0
+        ? reflectionPreferencesRes.data.map(r => r.content).join('\n')
+        : '';
 
     let humanValuesContext = '';
-    if (guestValues && guestValues.length > 0) {
-        humanValuesContext = 'STATED VALUES:\n' + guestValues
+    if (valuesRes.data?.length > 0) {
+        humanValuesContext = 'STATED VALUES:\n' + valuesRes.data
             .map(v => `${v.name}: ${v.content}`)
             .join('\n');
     }
-    if (observedValues && observedValues.length > 0) {
-        humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValues
+    if (observedValuesRes.data?.length > 0) {
+        humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValuesRes.data
             .map(v => `${v.name}: ${v.content}`)
             .join('\n');
     }
 
-    // Pull engine observations from consolidated profile
-    const { data: observations } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content, confidence, created_at')
-        .eq('category', 'Engine Observations')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-    let observationsContext = '';
-    if (observations && observations.length > 0) {
-        observationsContext = observations
-            .map(o => `${o.name}: ${o.content}`)
-            .join('\n');
-    }
-
-    // Pull most recent summary
-    const { data: summaryRows } = await supabaseClient
-        .from('summaries')
-        .select('summary, summary_type')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1);
+    const observationsContext = observationsRes.data?.length > 0
+        ? observationsRes.data.map(o => `${o.name}: ${o.content}`).join('\n')
+        : '';
 
     let summaryContext = '';
-    if (summaryRows && summaryRows.length > 0) {
-        const rawSummary = summaryRows[0].summary;
+    if (summaryRes.data?.length > 0) {
+        const rawSummary = summaryRes.data[0].summary;
         try {
             const parsed = JSON.parse(rawSummary);
             summaryContext = [
@@ -159,13 +165,11 @@ module.exports = async function handler(req, res) {
         }
     }
 
-    // Build recent entry history context
-    let historyContext = '';
-    if (recentEntries && recentEntries.length > 0) {
-        historyContext = recentEntries
+    const historyContext = recentEntries?.length > 0
+        ? recentEntries
             .map((e, i) => `Entry ${i + 1}:\n${e.entry}\n${e.reflection ? `Reflection: ${e.reflection}` : ''}`)
-            .join('\n\n');
-    }
+            .join('\n\n')
+        : '';
 
     const systemPrompt = `${PREAMBLE}
 
@@ -603,12 +607,10 @@ ${historyContext ? `LAST FIVE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}
                 model: 'claude-sonnet-4-20250514',
                 max_tokens: 1024,
                 system: systemPrompt,
-                messages: [
-                    {
-                        role: 'user',
-                        content: `Here is the writing prompt that opened this session:\n\n${promptUsed || 'No prompt used'}\n\nHere is the guest's journal entry:\n\n${entry}`
-                    }
-                ]
+                messages: [{
+                    role: 'user',
+                    content: `Here is the writing prompt that opened this session:\n\n${promptUsed || 'No prompt used'}\n\nHere is the guest's journal entry:\n\n${entry}`
+                }]
             })
         });
 
@@ -658,131 +660,122 @@ ${historyContext ? `LAST FIVE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}
 async function runSynthesis(supabaseClient, recentEntries, personaContext, userId) {
     if (!userId) return;
 
-    const { data: synthesisEntries } = await supabaseClient
-        .from('entries')
-        .select('entry, reflection, created_at')
-        .eq('user_id', userId)
-        .not('entry', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(10);
+    // ─── Pull synthesis context in parallel ───
+    const [
+        synthesisEntriesRes,
+        moodsRes,
+        feelingsRes,
+        deltaRes,
+        inspirationsRes,
+        fieldNotesRes,
+        statedValuesRes
+    ] = await Promise.all([
 
-    if (!synthesisEntries || synthesisEntries.length === 0) return;
+        supabaseClient
+            .from('entries')
+            .select('entry, reflection, created_at')
+            .eq('user_id', userId)
+            .not('entry', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(10),
 
-    const entriesText = synthesisEntries
+        supabaseClient
+            .from('mood')
+            .select('score, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(20),
+
+        supabaseClient
+            .from('feelings')
+            .select('feeling, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50),
+
+        supabaseClient
+            .from('entries')
+            .select('mood_post, created_at')
+            .eq('user_id', userId)
+            .not('mood_post', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(10),
+
+        supabaseClient
+            .from('inspirations')
+            .select('content, category, feeling_evoked, location, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(20),
+
+        supabaseClient
+            .from('field_notes')
+            .select('content, theme, location, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(10),
+
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name')
+            .eq('category', 'Stated Values')
+            .eq('status', 'active')
+    ]);
+
+    if (!synthesisEntriesRes.data || synthesisEntriesRes.length === 0) return;
+
+    const entriesText = synthesisEntriesRes.data
         .map((e, i) => `Entry ${i + 1}:\n${e.entry}`)
         .join('\n\n');
 
-    const { data: recentMoods } = await supabaseClient
-        .from('mood')
-        .select('score, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-    const { data: recentFeelings } = await supabaseClient
-        .from('feelings')
-        .select('feeling, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
     let moodContext = '';
-    if (recentMoods && recentMoods.length > 0) {
-        const avgMood = (recentMoods.reduce((sum, m) => sum + m.score, 0) / recentMoods.length).toFixed(1);
-        const moodScores = recentMoods.map(m => m.score).join(', ');
-        moodContext = `Mood scores (most recent first): ${moodScores}\nAverage: ${avgMood}/10`;
+    if (moodsRes.data?.length > 0) {
+        const avgMood = (moodsRes.data.reduce((sum, m) => sum + m.score, 0) / moodsRes.data.length).toFixed(1);
+        moodContext = `Mood scores (most recent first): ${moodsRes.data.map(m => m.score).join(', ')}\nAverage: ${avgMood}/10`;
     }
 
-    const { data: deltaEntries } = await supabaseClient
-        .from('entries')
-        .select('mood_post, created_at')
-        .eq('user_id', userId)
-        .not('mood_post', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
     let deltaContext = '';
-    if (deltaEntries && deltaEntries.length > 0) {
-        deltaContext = `Post-reflection mood scores (most recent first): ${deltaEntries.map(e => e.mood_post).join(', ')}`;
+    if (deltaRes.data?.length > 0) {
+        deltaContext = `Post-reflection mood scores (most recent first): ${deltaRes.data.map(e => e.mood_post).join(', ')}`;
     }
 
     let feelingsContext = '';
-    if (recentFeelings && recentFeelings.length > 0) {
+    if (feelingsRes.data?.length > 0) {
         const feelingCounts = {};
-        recentFeelings.forEach(f => {
+        feelingsRes.data.forEach(f => {
             feelingCounts[f.feeling] = (feelingCounts[f.feeling] || 0) + 1;
         });
-        const sorted = Object.entries(feelingCounts)
+        feelingsContext = `Feelings frequency: ${Object.entries(feelingCounts)
             .sort((a, b) => b[1] - a[1])
             .map(([feeling, count]) => `${feeling} (${count})`)
-            .join(', ');
-        feelingsContext = `Feelings frequency: ${sorted}`;
-    }
-
-    const { data: recentInspirations } = await supabaseClient
-        .from('inspirations')
-        .select('content, category, feeling_evoked, location, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-    const { data: recentFieldNotes } = await supabaseClient
-        .from('field_notes')
-        .select('content, theme, location, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-    let fieldNotesContext = '';
-    if (recentFieldNotes && recentFieldNotes.length > 0) {
-        const themes = recentFieldNotes
-            .filter(n => n.theme)
-            .map(n => n.theme)
-            .join(', ');
-        fieldNotesContext = `Field note themes: ${themes || 'none extracted yet'}`;
+            .join(', ')}`;
     }
 
     let inspirationsContext = '';
-    if (recentInspirations && recentInspirations.length > 0) {
+    if (inspirationsRes.data?.length > 0) {
         const categoryCount = {};
-        recentInspirations.forEach(i => {
-            if (i.category) {
-                categoryCount[i.category] = (categoryCount[i.category] || 0) + 1;
-            }
+        inspirationsRes.data.forEach(i => {
+            if (i.category) categoryCount[i.category] = (categoryCount[i.category] || 0) + 1;
         });
-        const categorySummary = Object.entries(categoryCount)
+        inspirationsContext = `Inspiration categories: ${Object.entries(categoryCount)
             .sort((a, b) => b[1] - a[1])
             .map(([cat, count]) => `${cat} (${count})`)
-            .join(', ');
-
-        const feelingsSummary = recentInspirations
-            .filter(i => i.feeling_evoked)
-            .map(i => i.feeling_evoked)
-            .join(', ');
-
-        const locationSummary = [...new Set(recentInspirations
-            .filter(i => i.location)
-            .map(i => i.location))]
-            .join(', ');
-
-        inspirationsContext = `Inspiration categories: ${categorySummary || 'none extracted yet'}`;
-        if (feelingsSummary) inspirationsContext += `\nFeelings evoked by inspirations: ${feelingsSummary}`;
-        if (locationSummary) inspirationsContext += `\nLocations of inspiration: ${locationSummary}`;
+            .join(', ')}`;
+        const feelings = inspirationsRes.data.filter(i => i.feeling_evoked).map(i => i.feeling_evoked).join(', ');
+        if (feelings) inspirationsContext += `\nFeelings evoked: ${feelings}`;
+        const locations = [...new Set(inspirationsRes.data.filter(i => i.location).map(i => i.location))].join(', ');
+        if (locations) inspirationsContext += `\nLocations: ${locations}`;
     }
 
-    // Pull current stated values for synthesis context
-    const { data: statedValues } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, status')
-        .eq('category', 'Stated Values')
-        .eq('status', 'active');
-
-    let valuesContext = '';
-    if (statedValues && statedValues.length > 0) {
-        valuesContext = statedValues
-            .map(v => v.name)
-            .join(', ');
+    let fieldNotesContext = '';
+    if (fieldNotesRes.data?.length > 0) {
+        const themes = fieldNotesRes.data.filter(n => n.theme).map(n => n.theme).join(', ');
+        fieldNotesContext = `Field note themes: ${themes || 'none extracted yet'}`;
     }
+
+    const valuesContext = statedValuesRes.data?.length > 0
+        ? statedValuesRes.data.map(v => v.name).join(', ')
+        : '';
 
     const synthesisPrompt = `You are analyzing a private journal to extract evolving patterns and detect significant changes. You will produce two outputs.
 
@@ -833,12 +826,7 @@ ${entriesText}`;
             body: JSON.stringify({
                 model: 'claude-haiku-4-5-20251001',
                 max_tokens: 1024,
-                messages: [
-                    {
-                        role: 'user',
-                        content: synthesisPrompt
-                    }
-                ]
+                messages: [{ role: 'user', content: synthesisPrompt }]
             })
         });
 
@@ -846,9 +834,16 @@ ${entriesText}`;
         const synthesisText = synthesisData.content[0].text;
 
         const parts = synthesisText.split('OUTPUT 2');
-        const summaryRaw = parts[0].replace('OUTPUT 1 — SUMMARY:', '').replace('# OUTPUT 1 — SUMMARY', '').trim();
-        const summaryText = summaryRaw.replace(/#{1,6}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '').trim();
-        const changesText = parts[1] ? parts[1].replace('— DETECTED CHANGES:', '').trim() : '';
+        const summaryText = parts[0]
+            .replace('OUTPUT 1 — SUMMARY:', '')
+            .replace('# OUTPUT 1 — SUMMARY', '')
+            .replace(/#{1,6}\s/g, '')
+            .replace(/\*\*/g, '')
+            .replace(/\*/g, '')
+            .trim();
+        const changesText = parts[1]
+            ? parts[1].replace('— DETECTED CHANGES:', '').trim()
+            : '';
 
         await supabaseClient
             .from('summaries')
@@ -862,41 +857,42 @@ ${entriesText}`;
             const changeLines = changesText.split('\n').filter(line => line.includes('|'));
             for (const line of changeLines) {
                 const [type, field, detectedContent, confidence] = line.split('|');
-                if (type && field && detectedContent) {
+                if (!type || !field || !detectedContent) continue;
 
-                    if (type.trim() === 'HUMAN_VALUE') {
-                        const { data: existingValue } = await supabaseClient
-                            .from('guest_profile_v2')
-                            .select('id')
-                            .eq('category', 'Observed Values')
-                            .eq('name', field.trim())
-                            .single();
-
-                        if (!existingValue) {
-                            await supabaseClient
-                                .from('guest_profile_v2')
-                                .insert([{
-                                    category: 'Observed Values',
-                                    name: field.trim(),
-                                    content: detectedContent.trim(),
-                                    source: 'engine_detected',
-                                    status: 'active'
-                                }]);
-                        }
-                        continue;
-                    }
-
-                    await supabaseClient
+                if (type.trim() === 'HUMAN_VALUE') {
+                    const { data: existingValue } = await supabaseClient
                         .from('guest_profile_v2')
-                        .insert([{
-                            category: 'Engine Observations',
-                            name: field.trim(),
-                            content: detectedContent.trim(),
-                            source: 'engine_detected',
-                            status: 'active',
-                            confidence: confidence ? confidence.trim() : 'medium'
-                        }]);
+                        .select('id')
+                        .eq('category', 'Observed Values')
+                        .eq('name', field.trim())
+                        .single();
+
+                    if (!existingValue) {
+                        await supabaseClient
+                            .from('guest_profile_v2')
+                            .insert([{
+                                category: 'Observed Values',
+                                name: field.trim(),
+                                content: detectedContent.trim(),
+                                source: 'engine_detected',
+                                status: 'active',
+                                claude_model: 'claude-haiku-4-5-20251001'
+                            }]);
+                    }
+                    continue;
                 }
+
+                await supabaseClient
+                    .from('guest_profile_v2')
+                    .insert([{
+                        category: 'Engine Observations',
+                        name: field.trim(),
+                        content: detectedContent.trim(),
+                        source: 'engine_detected',
+                        status: 'active',
+                        confidence: confidence ? confidence.trim() : 'medium',
+                        claude_model: 'claude-haiku-4-5-20251001'
+                    }]);
             }
         }
 
@@ -919,19 +915,19 @@ async function checkAndGenerateWeeklySummary(supabaseClient, userId) {
         const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
         if (!lastWeekly || lastWeekly.length === 0 || new Date(lastWeekly[0].created_at) < sevenDaysAgo) {
-            const periodEnd = now.toISOString();
-            const periodStart = sevenDaysAgo.toISOString();
-
-            await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/summary`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: userId,
-                    periodStart: periodStart,
-                    periodEnd: periodEnd,
-                    summaryType: 'weekly'
-                })
-            });
+            await fetch(
+                `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/summary`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        periodStart: sevenDaysAgo.toISOString(),
+                        periodEnd: now.toISOString(),
+                        summaryType: 'weekly'
+                    })
+                }
+            );
         }
     } catch (error) {
         console.error('Weekly summary check error:', error);

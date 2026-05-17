@@ -10,78 +10,83 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-   const { passage, userId, entryId } = req.body;
+    const { passage, userId, entryId } = req.body;
 
-if (!passage || !userId) {
-    return res.status(400).json({ error: 'Missing required fields' });
-}
+    if (!passage || !userId) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
 
-if (!entryId) {
-    console.error('Highlight API — missing entryId');
-    return res.status(400).json({ error: 'Missing entryId' });
-}
+    if (!entryId) {
+        console.error('Highlight API — missing entryId');
+        return res.status(400).json({ error: 'Missing entryId' });
+    }
 
     try {
         // ─── Pull all context in parallel ───
+        /*
+            Six parallel reads — merged highlights query
+            eliminates one redundant database call.
+            recentHighlights reads 30 rows and serves
+            both recent pattern detection (last 15)
+            and historical frequency analysis (all 30).
+        */
         const [
             profileRes,
             fairWindsRes,
             undertowsRes,
             reflectionPreferencesRes,
             recentHighlightsRes,
-            currentEntryRes,
-            significantHighlightsRes
+            currentEntryRes
         ] = await Promise.all([
 
+            // Engine observations — context for analysis
             supabase
                 .from('guest_profile_v2')
-                .select('category, name, content')
+                .select('name, content')
+                .eq('category', 'Engine Observations')
                 .eq('status', 'active')
-                .in('category', ['Engine Observations'])
                 .order('created_at', { ascending: false })
                 .limit(15),
 
+            // Fair winds — sources of confirmed aliveness
             supabase
                 .from('guest_profile_v2')
                 .select('name, content')
                 .eq('category', 'Observed Fair Winds')
                 .eq('status', 'active'),
 
+            // Undertows — sensitive internal lens only
             supabase
                 .from('guest_profile_v2')
                 .select('name, content')
                 .eq('category', 'Observed Undertows')
                 .eq('status', 'active'),
 
+            // Existing reflection preferences
             supabase
                 .from('guest_profile_v2')
-                .select('name, content')
+                .select('content')
                 .eq('category', 'Reflection Preferences')
                 .eq('status', 'active')
                 .order('created_at', { ascending: false })
                 .limit(15),
 
+            // All highlights — serves both recent pattern
+            // detection and historical frequency analysis
             supabase
                 .from('entries')
                 .select('guest_highlights, created_at')
                 .eq('user_id', userId)
                 .not('guest_highlights', 'is', null)
                 .order('created_at', { ascending: false })
-                .limit(15),
+                .limit(30),
 
+            // Current entry — sibling highlights + entry text
             supabase
                 .from('entries')
-                .select('guest_highlights, reflection_highlighted, entry, reflection')
+                .select('guest_highlights, entry, reflection')
                 .eq('id', entryId)
-                .single(),
-
-            supabase
-                .from('entries')
-                .select('guest_highlights')
-                .eq('user_id', userId)
-                .not('guest_highlights', 'is', null)
-                .order('created_at', { ascending: false })
-                .limit(30)
+                .single()
         ]);
 
         // ─── Build context strings ───
@@ -102,7 +107,9 @@ if (!entryId) {
             ? reflectionPreferencesRes.data.map(r => r.content).join('\n')
             : '';
 
-        // Other passages highlighted in THIS same reflection
+        // Sibling highlights — other passages marked in this session
+        // contextualize the current highlight and together
+        // reveal what the guest is collectively responding to
         const siblingHighlights = currentEntryRes.data?.guest_highlights
             ? currentEntryRes.data.guest_highlights
                 .filter(h => h !== passage)
@@ -111,58 +118,49 @@ if (!entryId) {
 
         const currentEntry = currentEntryRes.data?.entry || '';
 
-        const allRecentHighlights = recentHighlightsRes.data
-            ? recentHighlightsRes.data
-                .flatMap(e => e.guest_highlights || [])
-                .slice(0, 25)
-                .join('\n— ')
-            : '';
-
-        const allHistoricalHighlights = significantHighlightsRes.data
-            ? significantHighlightsRes.data
-                .flatMap(e => e.guest_highlights || [])
+        // Split the 30 highlights into two views:
+        // recent (last 15 sessions) for pattern detection
+        // all 30 for historical frequency analysis
+        const allHighlights = recentHighlightsRes.data
+            ? recentHighlightsRes.data.flatMap(e => e.guest_highlights || [])
             : [];
 
-        const highlightCount = allHistoricalHighlights.length;
+        const highlightCount = allHighlights.length;
+
+        const allRecentHighlights = allHighlights
+            .slice(0, 25)
+            .join('\n— ');
 
         // ─── Haiku analysis call ───
         /*
             The intelligence layer. Haiku reads the
             highlighted passage against the full guest
-            profile and returns:
+            profile and returns derived insight — not
+            a description of the highlight but Mirror's
+            interpretation of what it means.
 
-            1. An Engine Observation — what this highlight
-               reveals about who the guest is, what is
-               shifting, what themes are forming. This is
-               the contextual insight that goes into the
-               profile. Not the highlight itself — Mirror's
-               interpretation of what the highlight means.
-
-            2. A Reflection Preference — what kind of
-               observation produced this recognition. Used
-               to calibrate future reflections toward what
-               lands for this specific guest.
-
-            The highlight text itself is already in the
-            entries table. What goes into guest_profile_v2
-            is Mirror's intelligence about what the highlight
-            reveals — themes forming, apertures opening,
-            drift evidence, patterns the guest may not
-            yet be conscious of.
+            Two outputs written to guest_profile_v2:
+            1. Engine Observation — what the highlight
+               reveals about who the guest is and what
+               is shifting. The profile gets richer with
+               every star tap.
+            2. Reflection Preference — what kind of
+               observation produced recognition. Calibrates
+               future reflections toward what lands.
         */
-  const analysisResponse = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
-        messages: [{
-            role: 'user',
-            content: `You are the intelligence layer of Mirror, a journaling reflection tool. A guest has highlighted a passage from their reflection. The highlight text itself is already stored — your job is NOT to repeat it. Your job is to derive contextual insight from it.
+        const analysisResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 800,
+                messages: [{
+                    role: 'user',
+                    content: `You are the intelligence layer of Mirror, a journaling reflection tool. A guest has highlighted a passage from their reflection. The highlight text itself is already stored — your job is NOT to repeat it. Your job is to derive contextual insight from it.
 
 What does this highlight reveal about this guest? What themes are forming across their highlights? What is opening up in their thinking that they may not yet be conscious of? What aperture does this create for future writing prompts?
 
@@ -219,13 +217,13 @@ Return ONLY a JSON object. No preamble. No markdown. No backticks.
   "drift_evidence": "if this is evidence of behavioral or psychological drift — describe the direction of movement in one sentence. null if not applicable.",
   "reflection_preference": "one sentence describing what kind of Mirror observation this guest responds to — written as a calibration statement for future reflections. Be specific about register, depth, and structural pattern."
 }`
-        }]
-    })
-});
+                }]
+            })
+        });
 
-const analysisData = await analysisResponse.json();
-const rawText = analysisData.content[0].text.trim();
-console.log('Highlight API raw Haiku response:', rawText);
+        const analysisData = await analysisResponse.json();
+        const rawText = analysisData.content[0].text.trim();
+        console.log('Highlight API raw Haiku response:', rawText);
 
         let analysis = null;
         try {
@@ -238,12 +236,11 @@ console.log('Highlight API raw Haiku response:', rawText);
 
         // ─── Write Engine Observation ───
         /*
-            This write always happens — even if the full
-            analysis failed to parse. The engine observation
-            is Mirror's contextual intelligence about what
-            the highlight means. Not the highlight text —
-            the derived insight. This is what makes the
-            profile richer with every tap of the star.
+            Always writes — even if analysis failed to parse.
+            The engine observation is derived insight about
+            what the highlight means. Not the highlight text
+            itself — Mirror's interpretation of it.
+            Profile gets richer with every star tap.
         */
         const engineObservationContent = analysis?.engine_observation
             ? [
@@ -254,7 +251,7 @@ console.log('Highlight API raw Haiku response:', rawText);
                 analysis.fair_wind_connection ? `Fair wind confirmed: ${analysis.fair_wind_connection}` : null,
                 analysis.aperture_suggestion ? `Aperture: ${analysis.aperture_suggestion}` : null,
               ].filter(Boolean).join(' | ')
-            : `Guest highlighted a passage from their reflection. Analysis pending. Passage type: ${passage.substring(0, 100)}`;
+            : `Guest highlighted a passage. Analysis pending. Preview: ${passage.substring(0, 100)}`;
 
         const { error: obsError } = await supabase
             .from('guest_profile_v2')
@@ -264,7 +261,8 @@ console.log('Highlight API raw Haiku response:', rawText);
                 content: engineObservationContent,
                 source: 'guest_highlight',
                 status: 'active',
-                confidence: analysis ? 'high' : 'low'
+                confidence: analysis ? 'high' : 'low',
+                claude_model: 'claude-haiku-4-5-20251001'
             }]);
 
         if (obsError) {
@@ -275,10 +273,10 @@ console.log('Highlight API raw Haiku response:', rawText);
 
         // ─── Write Reflection Preferences ───
         /*
-            What kind of observation produced recognition
-            for this guest. Calibrates future reflections.
-            Written separately so prompt.js and reflect.js
-            can query it independently.
+            What kind of observation produced recognition.
+            Calibrates future reflections toward what lands
+            for this specific guest. Read by prompt.js and
+            reflect.js independently.
         */
         if (analysis?.reflection_preference) {
             const { error: prefError } = await supabase
@@ -289,7 +287,8 @@ console.log('Highlight API raw Haiku response:', rawText);
                     content: `${analysis.reflection_preference}${analysis.aperture_suggestion ? ` Aperture: ${analysis.aperture_suggestion}` : ''}`,
                     source: 'guest_highlight',
                     status: 'active',
-                    confidence: 'high'
+                    confidence: 'high',
+                    claude_model: 'claude-haiku-4-5-20251001'
                 }]);
 
             if (prefError) {
