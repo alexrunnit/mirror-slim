@@ -191,14 +191,14 @@
 
         <div id="reflection"></div>
 
-        <<!-- Highlight mechanism -->
-<div id="highlight-section" style="display:none; margin-top:24px;">
-    <div id="highlight-toolbar" style="display:flex; align-items:center; justify-content:flex-start; gap:10px; padding:12px 0; border-top:1px solid #eee;">
-        <button onclick="saveHighlight()" id="highlight-btn" style="background:none; border:none; font-size:1.4rem; cursor:pointer; padding:0; margin-top:0; line-height:1;">☆</button>
-        <span style="font-size:0.75rem; color:#bbb; letter-spacing:0.05em;">Tap the star to highlight your favorite passages.</span>
-    </div>
-    <div id="highlight-status" style="font-size:0.8rem; color:#888; margin-top:4px;"></div>
-</div>
+        <!-- Highlight mechanism -->
+        <div id="highlight-section" style="display:none; margin-top:24px;">
+            <div id="highlight-toolbar" style="display:flex; align-items:center; justify-content:flex-start; gap:10px; padding:12px 0; border-top:1px solid #eee;">
+                <button onclick="saveHighlight()" id="highlight-btn" style="background:none; border:none; font-size:1.4rem; cursor:pointer; padding:0; margin-top:0; line-height:1;">☆</button>
+                <span style="font-size:0.75rem; color:#bbb; letter-spacing:0.05em;">Select your favorite passages and tap the star to highlight.</span>
+            </div>
+            <div id="highlight-status" style="font-size:0.8rem; color:#888; margin-top:4px;"></div>
+        </div>
 
         <!-- Post-writing mood -->
         <div id="mood-post-section" style="display:block; margin-top:32px;">
@@ -416,7 +416,6 @@
                 document.getElementById('mood-post-status').innerText = 'Error saving.';
             } else {
                 document.getElementById('mood-post-status').innerText = `Post-session mood ${score} logged.`;
-                currentRowId = null;
             }
         }
 
@@ -651,12 +650,6 @@
             }
 
             // ─── Visual confirmation — star pulses gold ───
-            /*
-                The star fills and pulses immediately on tap.
-                void highlightBtn.offsetWidth forces the browser
-                to recalculate layout — this restarts the CSS
-                animation even if tapped multiple times.
-            */
             const highlightBtn = document.getElementById('highlight-btn');
             highlightBtn.textContent = '★';
             highlightBtn.classList.add('active');
@@ -665,13 +658,6 @@
             highlightBtn.classList.add('pulse');
 
             // ─── DOM manipulation — wrap in mark tag ───
-            /*
-                getRangeAt(0) gets the exact range of the
-                selection — start and end positions in the DOM.
-                surroundContents wraps the selected content
-                in the mark element we create.
-                The browser renders the yellow highlight instantly.
-            */
             try {
                 const range = selection.getRangeAt(0);
                 const mark = document.createElement('mark');
@@ -688,11 +674,6 @@
             currentHighlights.push(selectedText);
 
             // ─── Two Supabase writes in one call ───
-            /*
-                guest_highlights — clean text array for the engine
-                reflection_highlighted — full HTML with mark tags
-                Both update the same row using currentRowId.
-            */
             if (currentRowId) {
                 const { error } = await supabaseClient
                     .from('entries')
@@ -715,12 +696,6 @@
                     : '';
 
             // ─── Haiku analysis — fire and forget ───
-            /*
-                No await — runs in the background.
-                Analyzes why the passage landed and writes
-                the interpretation to Reflection Preferences
-                in guest_profile_v2.
-            */
             analyzeHighlight(selectedText);
         }
 
@@ -892,8 +867,6 @@
                     const delta = e.mood_pre && e.mood_post ? (e.mood_post - e.mood_pre > 0 ? `+${e.mood_post - e.mood_pre}` : `${e.mood_post - e.mood_pre}`) : '';
                     const feelingTags = e.feelings && e.feelings.length > 0 ? e.feelings.map(f => `<span style="display:inline-block; background:#f5f5f0; color:#666; font-size:0.75rem; padding:2px 8px; margin:2px; border:1px solid #eee;">${f}</span>`).join('') : '';
 
-                    // Use reflection_highlighted if it exists
-                    // so yellow highlights appear in the archive
                     const reflectionDisplay = e.reflection_highlighted || e.reflection || '';
                     const reflectionPreview = e.reflection
                         ? e.reflection.substring(0, 150) + (e.reflection.length > 150 ? '...' : '')

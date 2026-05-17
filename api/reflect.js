@@ -36,50 +36,64 @@ module.exports = async function handler(req, res) {
             .join('\n\n');
     }
 
-// Pull significant relationships as sensitive context
-// Held for tonal awareness only — never surfaced in output
-const { data: sensitiveRelationships } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content')
-    .eq('category', 'Significant Relationships')
-    .eq('status', 'active');
+    // Pull significant relationships as sensitive context
+    const { data: sensitiveRelationships } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Significant Relationships')
+        .eq('status', 'active');
 
-let sensitiveRelationshipsContext = '';
-if (sensitiveRelationships && sensitiveRelationships.length > 0) {
-    sensitiveRelationshipsContext = sensitiveRelationships
-        .map(r => `${r.name}: ${r.content}`)
-        .join('\n');
-}
+    let sensitiveRelationshipsContext = '';
+    if (sensitiveRelationships && sensitiveRelationships.length > 0) {
+        sensitiveRelationshipsContext = sensitiveRelationships
+            .map(r => `${r.name}: ${r.content}`)
+            .join('\n');
+    }
 
-// Pull observed undertows as sensitive context
-// Lens for drift detection only — never surfaced directly
-const { data: observedUndertows } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content')
-    .eq('category', 'Observed Undertows')
-    .eq('status', 'active');
+    // Pull observed undertows as sensitive context
+    const { data: observedUndertows } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Observed Undertows')
+        .eq('status', 'active');
 
-let undertowsContext = '';
-if (observedUndertows && observedUndertows.length > 0) {
-    undertowsContext = observedUndertows
-        .map(u => `${u.name}: ${u.content}`)
-        .join('\n');
-}
+    let undertowsContext = '';
+    if (observedUndertows && observedUndertows.length > 0) {
+        undertowsContext = observedUndertows
+            .map(u => `${u.name}: ${u.content}`)
+            .join('\n');
+    }
 
-// Pull observed fair winds
-// Priority aperture material — sources of aliveness confirmed in writing
-const { data: fairWinds } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content')
-    .eq('category', 'Observed Fair Winds')
-    .eq('status', 'active');
+    // Pull observed fair winds
+    const { data: fairWinds } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Observed Fair Winds')
+        .eq('status', 'active');
 
-let fairWindsContext = '';
-if (fairWinds && fairWinds.length > 0) {
-    fairWindsContext = fairWinds
-        .map(f => `${f.name}: ${f.content}`)
-        .join('\n');
-}
+    let fairWindsContext = '';
+    if (fairWinds && fairWinds.length > 0) {
+        fairWindsContext = fairWinds
+            .map(f => `${f.name}: ${f.content}`)
+            .join('\n');
+    }
+
+    // Pull reflection preferences — what has landed for this guest
+    // Derived from guest highlights — calibrates register and depth
+    const { data: reflectionPreferences } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content')
+        .eq('category', 'Reflection Preferences')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    let reflectionPreferencesContext = '';
+    if (reflectionPreferences && reflectionPreferences.length > 0) {
+        reflectionPreferencesContext = reflectionPreferences
+            .map(r => r.content)
+            .join('\n');
+    }
 
     // Pull stated and observed values
     const { data: guestValues } = await supabaseClient
@@ -107,20 +121,20 @@ if (fairWinds && fairWinds.length > 0) {
     }
 
     // Pull engine observations from consolidated profile
-const { data: observations } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content, confidence, created_at')
-    .eq('category', 'Engine Observations')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(20);
+    const { data: observations } = await supabaseClient
+        .from('guest_profile_v2')
+        .select('name, content, confidence, created_at')
+        .eq('category', 'Engine Observations')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-let observationsContext = '';
-if (observations && observations.length > 0) {
-    observationsContext = observations
-        .map(o => `${o.name}: ${o.content}`)
-        .join('\n');
-}
+    let observationsContext = '';
+    if (observations && observations.length > 0) {
+        observationsContext = observations
+            .map(o => `${o.name}: ${o.content}`)
+            .join('\n');
+    }
 
     // Pull most recent summary
     const { data: summaryRows } = await supabaseClient
@@ -240,6 +254,15 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
    before? Which good wolf moments have been
    flagged? Does today's entry show the same
    patterns or something different?
+
+7. REFLECTION PREFERENCES
+   What kinds of observations has this guest
+   marked as landing? What register, depth,
+   and structural pattern produces recognition
+   for them specifically? Use this to calibrate
+   the reflection toward what genuinely lands
+   for this guest — not as a formula to repeat
+   but as a register to inhabit.
 
 ───────────────────────────────────────────────────
 PRE-WRITING ANALYSIS — DO THIS BEFORE WRITING
@@ -562,6 +585,7 @@ ${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
 ${sensitiveRelationshipsContext ? `SIGNIFICANT RELATIONSHIPS (held for tonal awareness — never surface names or dynamics in output):\n${sensitiveRelationshipsContext}\n` : ''}
 ${undertowsContext ? `OBSERVED UNDERTOWS (sensitive — lens for drift detection only — never surface directly — never use as aperture):\n${undertowsContext}\n` : ''}
 ${fairWindsContext ? `OBSERVED FAIR WINDS (priority aperture material — sources of confirmed aliveness — open toward what these touch not the activity itself):\n${fairWindsContext}\n` : ''}
+${reflectionPreferencesContext ? `REFLECTION PREFERENCES (what has landed for this guest — calibrate register and depth accordingly):\n${reflectionPreferencesContext}\n` : ''}
 ${observationsContext ? `MIRROR OBSERVATIONS (detected across sessions):\n${observationsContext}\n` : ''}
 ${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
@@ -589,7 +613,7 @@ ${historyContext ? `LAST FIVE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}
         });
 
         const data = await response.json();
-        const reflection = data.content[0].text;
+        const reflection = data.content[0].text.trim().replace(/^[<>\s]+/, '');
 
         let sessionRowId = rowId;
 
@@ -840,7 +864,6 @@ ${entriesText}`;
                 const [type, field, detectedContent, confidence] = line.split('|');
                 if (type && field && detectedContent) {
 
-                    // Handle human value discoveries — write to guest_profile_v2
                     if (type.trim() === 'HUMAN_VALUE') {
                         const { data: existingValue } = await supabaseClient
                             .from('guest_profile_v2')
@@ -863,19 +886,16 @@ ${entriesText}`;
                         continue;
                     }
 
-                    // Write engine observations directly to guest_profile_v2
-// No approval gate — engine writes directly to the living profile
-await supabaseClient
-    .from('guest_profile_v2')
-    .insert([{
-        category: 'Engine Observations',
-        name: field.trim(),
-        content: detectedContent.trim(),
-        source: 'engine_detected',
-        status: 'active',
-        confidence: confidence ? confidence.trim() : 'medium'
-    }]);
-
+                    await supabaseClient
+                        .from('guest_profile_v2')
+                        .insert([{
+                            category: 'Engine Observations',
+                            name: field.trim(),
+                            content: detectedContent.trim(),
+                            source: 'engine_detected',
+                            status: 'active',
+                            confidence: confidence ? confidence.trim() : 'medium'
+                        }]);
                 }
             }
         }
