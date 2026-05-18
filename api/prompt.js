@@ -17,17 +17,142 @@ module.exports = async function handler(req, res) {
         process.env.SUPABASE_SERVICE_KEY
     );
 
-    // Pull non-sensitive persona fields
-    const { data: personaRows } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('category, name, content')
-        .eq('is_sensitive', false)
-        .eq('status', 'active');
+    // ─── Pull all context in parallel ───
+    /*
+        Twelve simultaneous reads. All context assembled
+        before the prompt is generated. No sequential waits.
+    */
+    const [
+        personaRes,
+        relationshipsRes,
+        undertowsRes,
+        fairWindsRes,
+        engineDetectedRes,
+        highlightObsRes,
+        reflectionPreferencesRes,
+        valuesRes,
+        observedValuesRes,
+        summaryRes,
+        feelingsRes,
+        recentEntriesRes,
+        inspirationsRes
+    ] = await Promise.all([
+
+        // Non-sensitive persona — 17 biographical categories
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('category, name, content')
+            .eq('is_sensitive', false)
+            .eq('status', 'active'),
+
+        // Significant relationships — tone only, never surfaced
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Significant Relationships')
+            .eq('status', 'active'),
+
+        // Observed undertows — aperture avoidance only
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Observed Undertows')
+            .eq('status', 'active'),
+
+        // Observed fair winds — priority aperture material
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Observed Fair Winds')
+            .eq('status', 'active'),
+
+        // Engine-detected observations — weighted 15 rows
+        // These are synthesis and Haiku scan rows — diverse
+        // behavioral data that drives aperture variety
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content, created_at')
+            .eq('category', 'Engine Observations')
+            .eq('source', 'engine_detected')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(15),
+
+        // Guest highlight observations — limited to 5 rows
+        // Informs but never dominates aperture selection
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content, created_at')
+            .eq('category', 'Engine Observations')
+            .eq('source', 'guest_highlight')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(5),
+
+        // Reflection preferences — register calibration only
+        // HOW to write the prompt, never WHAT to open toward
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('content')
+            .eq('category', 'Reflection Preferences')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(5),
+
+        // Stated values
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Stated Values')
+            .eq('status', 'active'),
+
+        // Observed values — detected in writing
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content')
+            .eq('category', 'Observed Values')
+            .eq('status', 'active'),
+
+        // Most recent summary
+        supabaseClient
+            .from('summaries')
+            .select('summary, summary_type')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1),
+
+        // Recent feelings — current session context
+        supabaseClient
+            .from('feelings')
+            .select('feeling, note, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(10),
+
+        // Last five entries — recent writing history
+        supabaseClient
+            .from('entries')
+            .select('entry, created_at')
+            .eq('user_id', userId)
+            .not('entry', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(5),
+
+        // Recent inspirations
+        supabaseClient
+            .from('inspirations')
+            .select('content, category, feeling_evoked, location')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(5)
+    ]);
+
+    // ─── Build context strings ───
 
     let personaContext = '';
-    if (personaRows && personaRows.length > 0) {
+    if (personaRes.data?.length > 0) {
         const grouped = {};
-        personaRows.forEach(row => {
+        personaRes.data.forEach(row => {
             if (!grouped[row.category]) grouped[row.category] = [];
             grouped[row.category].push(`${row.name}: ${row.content}`);
         });
@@ -36,73 +161,49 @@ module.exports = async function handler(req, res) {
             .join('\n\n');
     }
 
-// Pull significant relationships as sensitive context
-// Held for tonal awareness only — never surfaced in output
-const { data: sensitiveRelationships } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content')
-    .eq('category', 'Significant Relationships')
-    .eq('status', 'active');
+    const sensitiveRelationshipsContext = relationshipsRes.data?.length > 0
+        ? relationshipsRes.data.map(r => `${r.name}: ${r.content}`).join('\n')
+        : '';
 
-let sensitiveRelationshipsContext = '';
-if (sensitiveRelationships && sensitiveRelationships.length > 0) {
-    sensitiveRelationshipsContext = sensitiveRelationships
-        .map(r => `${r.name}: ${r.content}`)
-        .join('\n');
-}
+    const undertowsContext = undertowsRes.data?.length > 0
+        ? undertowsRes.data.map(u => `${u.name}: ${u.content}`).join('\n')
+        : '';
 
-    // Pull stated and observed values
-    const { data: guestValues } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Stated Values')
-        .eq('status', 'active');
+    const fairWindsContext = fairWindsRes.data?.length > 0
+        ? fairWindsRes.data.map(f => `${f.name}: ${f.content}`).join('\n')
+        : '';
 
-    const { data: observedValues } = await supabaseClient
-        .from('guest_profile_v2')
-        .select('name, content')
-        .eq('category', 'Observed Values')
-        .eq('status', 'active');
+    // Merge engine observations — engine_detected weighted 3:1
+    // over highlight observations to maintain aperture variety
+    const allObservations = [
+        ...(engineDetectedRes.data || []),
+        ...(highlightObsRes.data || [])
+    ];
+    const observationsContext = allObservations.length > 0
+        ? allObservations.map(o => `${o.name}: ${o.content}`).join('\n')
+        : '';
+
+    // Reflection preferences — register calibration only
+    // Aperture suggestions stripped from content by SQL update
+    const reflectionPreferencesContext = reflectionPreferencesRes.data?.length > 0
+        ? reflectionPreferencesRes.data.map(r => r.content).join('\n')
+        : '';
 
     let humanValuesContext = '';
-    if (guestValues && guestValues.length > 0) {
-        humanValuesContext = 'STATED VALUES:\n' + guestValues
+    if (valuesRes.data?.length > 0) {
+        humanValuesContext = 'STATED VALUES:\n' + valuesRes.data
             .map(v => `${v.name}: ${v.content}`)
             .join('\n');
     }
-    if (observedValues && observedValues.length > 0) {
-        humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValues
+    if (observedValuesRes.data?.length > 0) {
+        humanValuesContext += '\n\nOBSERVED VALUES (detected in writing):\n' + observedValuesRes.data
             .map(v => `${v.name}: ${v.content}`)
             .join('\n');
     }
-
-    // Pull engine observations from consolidated profile
-const { data: observations } = await supabaseClient
-    .from('guest_profile_v2')
-    .select('name, content, confidence, created_at')
-    .eq('category', 'Engine Observations')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-let observationsContext = '';
-if (observations && observations.length > 0) {
-    observationsContext = observations
-        .map(o => `${o.name}: ${o.content}`)
-        .join('\n');
-}
-
-    // Pull most recent summary
-    const { data: summaryRows } = await supabaseClient
-        .from('summaries')
-        .select('summary, summary_type')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1);
 
     let summaryContext = '';
-    if (summaryRows && summaryRows.length > 0) {
-        const rawSummary = summaryRows[0].summary;
+    if (summaryRes.data?.length > 0) {
+        const rawSummary = summaryRes.data[0].summary;
         try {
             const parsed = JSON.parse(rawSummary);
             summaryContext = [
@@ -115,59 +216,32 @@ if (observations && observations.length > 0) {
         }
     }
 
-    // Pull most recent feelings
-    const { data: recentFeelingsData } = await supabaseClient
-        .from('feelings')
-        .select('feeling, note, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
+    // Recent feelings — filter to current session window
     let recentFeelingsContext = '';
-    if (recentFeelingsData && recentFeelingsData.length > 0) {
-        const mostRecentTime = new Date(recentFeelingsData[0].created_at);
-        const sessionFeelings = recentFeelingsData.filter(f => {
-            const diff = mostRecentTime - new Date(f.created_at);
-            return diff < 300000;
+    if (feelingsRes.data?.length > 0) {
+        const mostRecentTime = new Date(feelingsRes.data[0].created_at);
+        const sessionFeelings = feelingsRes.data.filter(f => {
+            return (mostRecentTime - new Date(f.created_at)) < 300000;
         });
         const feelingNames = sessionFeelings.map(f => f.feeling).join(', ');
-        const feelingNote = sessionFeelings[0].note || '';
+        const feelingNote = sessionFeelings[0]?.note || '';
         recentFeelingsContext = `Recent feelings logged: ${feelingNames}`;
         if (feelingNote) recentFeelingsContext += `\nFeelings note: ${feelingNote}`;
     }
 
-    // Query recent entries
-    const { data: recentEntriesData } = await supabaseClient
-        .from('entries')
-        .select('entry, created_at')
-        .eq('user_id', userId)
-        .not('entry', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-    let historyContext = '';
-    if (recentEntriesData && recentEntriesData.length > 0) {
-        historyContext = recentEntriesData
+    const historyContext = recentEntriesRes.data?.length > 0
+        ? recentEntriesRes.data
             .map((e, i) => `Entry ${i + 1}:\n${e.entry}`)
-            .join('\n\n');
-    }
+            .join('\n\n')
+        : '';
 
-    // Pull recent inspirations
-    const { data: recentInspirations } = await supabaseClient
-        .from('inspirations')
-        .select('content, category, feeling_evoked, location')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-    let inspirationContext = '';
-    if (recentInspirations && recentInspirations.length > 0) {
-        inspirationContext = recentInspirations
+    const inspirationContext = inspirationsRes.data?.length > 0
+        ? inspirationsRes.data
             .map(i => `${i.content}${i.feeling_evoked ? ` (evoked: ${i.feeling_evoked})` : ''}${i.location ? ` — ${i.location}` : ''}`)
-            .join('\n');
-    }
+            .join('\n')
+        : '';
 
-    // Build current state context
+    // Current session state
     let currentStateContext = '';
     if (currentMood) {
         let moodBand = '';
@@ -177,7 +251,7 @@ if (observations && observations.length > 0) {
         else moodBand = 'acutely positive, rare and notable';
         currentStateContext += `Mood: ${currentMood}/10 (${moodBand})\n`;
     }
-    if (currentFeelings && currentFeelings.length > 0) {
+    if (currentFeelings?.length > 0) {
         currentStateContext += `Feelings present: ${currentFeelings.join(', ')}\n`;
     }
     if (feelingsNote) {
@@ -239,33 +313,46 @@ CONTEXT ASSEMBLY — READ IN THIS ORDER
    The synthesized story of where this guest has
    been. The ground they are standing on. What
    moved in the previous period. What hasn't yet.
-   This is the baton handed from Prompt 3.
    Read it first. Everything else builds on it.
 
 2. MIRROR OBSERVATIONS
    What the engine has detected changing across
-   sessions — language shifts, emotional pattern
-   changes, identity reconstruction signals,
-   momentum direction. This is the most current
-   picture of who this guest is becoming.
-   Weight this heavily for aperture selection.
+   sessions. Engine-detected rows carry more weight
+   for aperture selection than highlight rows.
+   Engine-detected rows reflect synthesis across
+   many sessions. Highlight rows reflect what
+   landed in specific moments — useful for register
+   calibration, not aperture direction.
 
-3. HUMAN VALUES PROFILE
-   What this guest stands for. The compass
-   underneath everything. Where values have been
-   showing up in behavior — even without being
-   named. Where they have been absent in a way
-   that matters. The good wolf's deepest nature.
+3. FAIR WINDS
+   Confirmed sources of aliveness in this guest's
+   writing. Priority aperture territory. Open toward
+   what each fair wind touches — not the activity
+   itself but what it produces in the guest.
 
-4. LAST FIVE ENTRIES
-   What has been written recently. The baton
-   handed from the most recent sessions. What
-   has been moving. What keeps recurring.
+4. HUMAN VALUES PROFILE
+   What this guest stands for. Where values are
+   operating in behavior even without being named.
+   The good wolf's deepest nature.
 
-5. CURRENT SESSION SIGNALS
+5. LAST FIVE ENTRIES
+   What has been written recently. What has been
+   moving. What keeps recurring. What is noticeably
+   absent from recent writing.
+
+6. CURRENT SESSION SIGNALS
    Feelings grid selection. Context note if added.
-   Time of day. Location if available. What is
-   present right now, today, in this moment.
+   Time of day. What is present right now.
+
+7. REFLECTION PREFERENCES
+   How this guest receives Mirror's output — what
+   register, depth, and structural pattern produces
+   recognition for them. Use this to calibrate
+   HOW the prompt is written. Never use it to
+   determine WHAT territory the prompt opens toward.
+   The aperture always comes from the data above.
+   Reflection preferences shape the voice of the
+   prompt. They never choose the aperture.
 
 ───────────────────────────────────────────────────
 THE APERTURE — FINDING THE RIGHT DOOR
@@ -278,51 +365,56 @@ interior landscape that is worth opening right now.
 
 APERTURE SELECTION HIERARCHY:
 
-FIRST — human values in action
-Where does the current data show the guest's
-human values operating in their behavior —
-even slightly, even incidentally? Where is a
-value being lived that the guest hasn't yet
-named? Where is a value the guest holds being
-tested or stretched? This is the highest
-priority aperture. This is where the most
-significant movement happens.
+FIRST — fair winds
+Where does the current data show a confirmed
+source of aliveness? Open toward what it touches —
+not the activity but what the activity produces.
+The connection. The flow. The value operating.
 
-SECOND — values-aligned exceptions
-Where does the current data show the guest
-moving toward what genuinely matters to them
-— even slightly, even incidentally?
-This is good wolf territory.
+SECOND — human values in action
+Where does the current data show the guest's
+values operating in behavior — even slightly,
+even incidentally? Where is a value being lived
+that the guest hasn't yet named? This is where
+significant movement happens.
 
 THIRD — pattern breaks
 Where does today's data differ from the dominant
-pattern in the progressive profile? The change
-— however small — is the aperture.
+pattern in the progressive profile? The change —
+however small — is the aperture.
 
 FOURTH — returning themes
 What keeps coming back in the writing that
-hasn't yet fully resolved? Open it gently,
-from the side, in a way that feels safe to enter.
+hasn't yet fully resolved? Open gently, from
+the side, in a way that feels safe to enter.
 
-FIFTH — present moment
-When all else is thin — early sessions, sparse
-data — the current feelings and context note
-are the aperture.
+FIFTH — unmapped territory (Category 1 only)
+Which profile categories are genuinely empty
+and low-risk to approach? Open with an oblique
+observation about what IS present that creates
+space for what has not appeared. Never a direct
+question. Always an observation that leaves the
+door open.
 
-CALIBRATE TO CURRENT SPEED:
-A guest at the beginning of their interior
-journey needs an aperture close to the surface.
-Specific. Contained. Safe to enter with three
-sentences.
+SIXTH — present moment
+When all else is thin — the current feelings
+and context note are the aperture.
 
-A guest who has been writing for months with
-depth and specificity can receive an aperture
-that goes further in — toward values, toward
-long patterns, toward the tensions that have
-been building across many sessions.
+IMPORTANT — APERTURE VARIETY:
+Look at the last five entries before selecting
+an aperture. If the same territory has been
+opened three or more times recently — find a
+different door. The progressive profiling engine
+has many categories of data. Use them. Each
+session should feel like Mirror is paying fresh
+attention, not running a loop.
 
-Same standard. Different calibration.
-The progressive profiling engine knows which.
+NEVER open the same aperture twice in a row.
+NEVER generate a prompt that asks the guest
+what something feels like in their body if
+the previous prompt did the same.
+NEVER default to the highlight-derived themes
+when other apertures are available in the data.
 
 ───────────────────────────────────────────────────
 WRITING THE PROMPT
@@ -336,13 +428,10 @@ enough that this guest thinks: Mirror sees me.
 This is about me. Right now. This is real.
 
 The test: could this sentence have been written
-for anyone else? If yes — rewrite it. The
-curiosity statement is specific or it is nothing.
+for anyone else? If yes — rewrite it.
 
 Tone: genuine interest. Not clinical attention.
-Not performed warmth. Mirror finds this specific
-thing about this specific person genuinely worth
-looking at. That energy is in the sentence.
+Not performed warmth.
 
 SENTENCE TWO — THE EXPLORATION QUESTION
 
@@ -352,39 +441,12 @@ inward. How, what, when, where, or what if.
 Never yes or no. Never rhetorical.
 
 The test: does the guest feel glad this question
-was asked? Does it arrive as relief — yes, that
-is exactly what I needed to be asked? Does it
-open without directing? If the guest feels
-obligation rather than desire — rewrite it.
+was asked? Does it arrive as relief?
 
 TOGETHER — THE AMAZON STANDARD:
 Sentence one makes the jungle real and worth
 entering. Sentence two hands the guest the
-canoe and paddle. The guest finishes reading
-and wants to go in.
-
-───────────────────────────────────────────────────
-WHAT THIS PROMPT HANDS TO PROMPT 2
-───────────────────────────────────────────────────
-
-The aperture Prompt 1 opens determines the
-territory Prompt 2 receives. Choose the aperture
-carefully. The guest will write from wherever
-Prompt 1 points them. Prompt 2 will find what
-is beneath whatever the guest brings back.
-
-The baton: one specific, honest, open door.
-Prompt 2 receives what comes through it.
-
-───────────────────────────────────────────────────
-REGISTER
-───────────────────────────────────────────────────
-
-Read the guest's recent entries for vocabulary,
-sentence length, rhythm, density, tone. Write
-both sentences in the guest's register. Match —
-do not mimic. The prompt should feel like a
-question this guest might have asked themselves.
+canoe and paddle.
 
 ───────────────────────────────────────────────────
 HARD LIMITS — ABSOLUTE
@@ -398,15 +460,16 @@ NEVER: prescribe action or nudge toward a
 NEVER: use first person (I notice, I think)
 NEVER: affirm, celebrate, or perform warmth
 NEVER: use clinical, wellness, or AI language
-NEVER: open toward a cognitive distortion —
-       check: does this prompt point toward
-       permanence, hopelessness, or isolation?
-       If yes — redirect to good wolf territory
+NEVER: open toward a cognitive distortion
 NEVER: produce the same aperture twice when
-       a different one is ready
+       a different one is available
+NEVER: ask what something feels like in the
+       body if the previous prompt did the same
+NEVER: use Reflection Preferences aperture
+       suggestions as the prompt territory —
+       they calibrate voice only, not direction
 NEVER: name a human value directly as the
-       subject of the question — point at the
-       behavior, let the guest name the value
+       subject of the question
 
 SIGNIFICANT RELATIONSHIPS BOUNDARY
 
@@ -414,114 +477,32 @@ Mirror holds the names, histories, and emotional
 weight of every significant person in the guest's
 life. It never surfaces them.
 
-Names carry weight. A name appearing in a
-reflection or prompt — a former partner, an
-estranged family member, someone lost — can
-cause immediate and significant distress. Mirror
-never uses names from the guest's relationship
-history in any output. It holds them as context.
-It never returns them as content.
-
-The guest's relationships with other people are
-not Mirror's territory. They are the guest's
-territory. Mirror's territory is the guest's
-interior — what those relationships produce
-inside this specific person. The feeling. The
-longing. The grief. The rage. The unresolved
-question. Never the other person.
-
-Specifically:
-
 NEVER surface the name of any former partner,
 estranged family member, or person who has
-passed out of the guest's life — even if the
-guest has named them in previous sessions.
-The guest chooses when and how to bring a
-person into the current session. Mirror never
-initiates that territory.
-
-NEVER suggest, imply, or open toward action
-in the guest's real-world relationships. Not
-directly, not indirectly. If a guest writes
-about longing for another person, Mirror holds
-the longing — not the person. If a guest writes
-about conflict with another person, Mirror holds
-the guest's internal experience of that conflict
-— never the dynamics between the two people.
-
-NEVER prompt the guest toward communication
-with another person. Not "what would it look
-like to tell them" — not any construction that
-moves the guest toward the other person. The
-guest's external relationships are entirely
-outside Mirror's scope. Mirror works only with
-what those relationships produce internally.
-
-NEVER take a position on another person in the
-guest's life — not positive, not negative. The
-other person is not present. Mirror cannot know
-them. Mirror knows only what this guest has
-written about their own experience of that
-relationship.
-
+passed out of the guest's life.
+NEVER suggest action in the guest's real-world
+relationships.
+NEVER prompt toward communication with another
+person.
+NEVER take a position on another person.
 NEVER open toward a relationship the guest
-has not opened in the current session. If a
-significant relationship appears in the profile
-but the guest has not referenced it today —
-it is not available as aperture material.
-The guest's timing is the only timing that
-matters for sensitive territory.
-
-The guest who writes about love, grief, rage,
-longing, or unresolved feeling toward another
-person is telling Mirror about their own interior
-— not inviting Mirror into the relationship.
-Mirror receives the interior. It never touches
-the relationship.
+has not opened in the current session.
 
 OBSERVED UNDERTOWS BOUNDARY
 
-Observed undertows are cognitive distortions
-detected in the guest's writing — conclusions
-presented as facts that are not facts. They are
-held in the profile as sensitive data for tone
-calibration and aperture avoidance only.
-
 NEVER make an observed undertow the subject
-of a writing prompt. Not directly, not indirectly,
-not through implication. If the undertow is about
-isolation — never ask about isolation. If the
-undertow is about capability — never ask about
-capability. If the undertow is about permanence —
-never ask what life would look like without the
-difficulty. That question confirms the difficulty
-as the center of gravity.
-
-Instead — find the fair wind in the same territory.
-The good wolf showing up in exactly the space the
-evil wolf claimed as its own. Open there.
+of a writing prompt. Find the fair wind in
+the same territory instead.
 
 OBSERVED FAIR WINDS — APERTURE PRIORITY
 
-Fair winds are confirmed sources of aliveness
-detected in the guest's writing. Topics and
-experiences that produce measurable tone shifts —
-energy present, sentences longer and more specific,
-positive feeling clusters appearing.
+When a fair wind is present — open toward what
+it touches. Not the activity itself but what
+the activity produces. The question never names
+the fair wind directly. It opens toward the
+interior territory the fair wind reveals.
 
-When a fair wind is present in the recent data —
-open toward what it touches. Not the activity
-itself but what the activity produces. The
-connection. The flow state. The value being
-expressed. The moment of genuine aliveness.
-
-The question never names the fair wind directly.
-It opens toward the interior territory the fair
-wind reveals. The guest goes inward and finds
-what is actually there.
-
-CRISIS: if signals suggest acute distress,
-suicidal ideation, or immediate danger —
+CRISIS: if signals suggest acute distress —
 do not generate a prompt. Acknowledge with
 care and direct to human support. Always.
 
@@ -539,9 +520,12 @@ GUEST CONTEXT
 
 Time of day: ${timeOfDay}
 
-$${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
+${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
 ${sensitiveRelationshipsContext ? `SIGNIFICANT RELATIONSHIPS (held for tonal awareness — never surface names or dynamics in output):\n${sensitiveRelationshipsContext}\n` : ''}
-${observationsContext ? `MIRROR OBSERVATIONS (detected across sessions):\n${observationsContext}\n` : ''}
+${undertowsContext ? `OBSERVED UNDERTOWS (sensitive — aperture avoidance only — never surface directly):\n${undertowsContext}\n` : ''}
+${fairWindsContext ? `OBSERVED FAIR WINDS (priority aperture material — open toward what these touch not the activity itself):\n${fairWindsContext}\n` : ''}
+${observationsContext ? `MIRROR OBSERVATIONS (engine_detected rows weighted for aperture selection — highlight rows for register calibration only):\n${observationsContext}\n` : ''}
+${reflectionPreferencesContext ? `REFLECTION PREFERENCES (register and depth calibration only — use to understand HOW to write the prompt, never to determine WHAT territory to open toward):\n${reflectionPreferencesContext}\n` : ''}
 ${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
 ${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}
@@ -561,19 +545,17 @@ ${historyContext ? `LAST FIVE ENTRIES:\n${historyContext}` : ''}`;
                 model: 'claude-sonnet-4-20250514',
                 max_tokens: 150,
                 system: promptSystem,
-                messages: [
-                    {
-                        role: 'user',
-                        content: `Generate the writing prompt for this guest's ${timeOfDay} session.`
-                    }
-                ]
+                messages: [{
+                    role: 'user',
+                    content: `Generate the writing prompt for this guest's ${timeOfDay} session.`
+                }]
             })
         });
 
         const data = await response.json();
         const prompt = data.content[0].text.trim();
 
-        const { data: newRow, error } = await supabaseClient
+        const { data: newRow } = await supabaseClient
             .from('entries')
             .insert([{
                 prompt: prompt,
@@ -582,14 +564,11 @@ ${historyContext ? `LAST FIVE ENTRIES:\n${historyContext}` : ''}`;
             .select('id')
             .single();
 
-        if (!newRow || !newRow.id) {
-            return res.status(500).json({ error: 'Row insert failed', prompt: prompt });
+        if (!newRow?.id) {
+            return res.status(500).json({ error: 'Row insert failed', prompt });
         }
 
-        return res.status(200).json({
-            prompt: prompt,
-            rowId: newRow.id
-        });
+        return res.status(200).json({ prompt, rowId: newRow.id });
 
     } catch (error) {
         return res.status(500).json({ error: 'Prompt generation failed: ' + error.message });

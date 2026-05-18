@@ -284,7 +284,7 @@ Return ONLY a JSON object. No preamble. No markdown. No backticks.
                 .insert([{
                     category: 'Reflection Preferences',
                     name: `pref_${analysis.observation_type}_${Date.now()}`,
-                    content: `${analysis.reflection_preference}${analysis.aperture_suggestion ? ` Aperture: ${analysis.aperture_suggestion}` : ''}`,
+                    content: analysis.reflection_preference,
                     source: 'guest_highlight',
                     status: 'active',
                     confidence: 'high',
