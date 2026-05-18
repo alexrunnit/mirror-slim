@@ -660,7 +660,7 @@ const [reflectionResponse, haikuResponse] = await Promise.all([
         },
         body: JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: 600,
+            max_tokens: 1024,
             messages: [{
                 role: 'user',
                 content: `You are the profile engine for Mirror, a private journaling tool. A guest has just submitted a journal entry. Your job is to scan it for three things and return structured JSON.
