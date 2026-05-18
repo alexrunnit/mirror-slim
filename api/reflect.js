@@ -596,26 +596,218 @@ ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
 ${historyContext ? `LAST FIVE ENTRIES AND REFLECTIONS:\n${historyContext}` : ''}`;
 
     try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.ANTHROPIC_API_KEY,
-                'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 1024,
-                system: systemPrompt,
-                messages: [{
-                    role: 'user',
-                    content: `Here is the writing prompt that opened this session:\n\n${promptUsed || 'No prompt used'}\n\nHere is the guest's journal entry:\n\n${entry}`
-                }]
-            })
-        });
+// ─── Reflection + Haiku profile scan — parallel ───
+/*
+    Two API calls fire simultaneously via Promise.all.
+    Sonnet generates the reflection — unchanged.
+    Haiku scans the entry for three things:
+    1. New biographical data to write to the profile
+    2. Gap audit — which categories are empty or sparse
+    3. Behavioral signals — fair winds, undertows, drift
+    Zero added latency — Haiku resolves before Sonnet.
+*/
 
-        const data = await response.json();
-        const reflection = data.content[0].text.trim().replace(/^[<>\s]+/, '');
+// Build the hardcoded category map for Haiku
+// So it knows exactly what belongs in each profile category
+const categoryMap = `
+DEMOGRAPHIC: age, location, nationality, languages spoken, living situation
+SITUATIONAL: current life chapter, recent major changes, living environment
+FORMATIVE EXPERIENCES: childhood, education, pivotal moments, defining experiences
+UNFINISHED STORIES: unresolved situations, ongoing challenges, open chapters
+CHARACTER AND IDENTITY: how the guest sees themselves, identity markers, self-description
+INNER LANDSCAPE: emotional patterns, internal experience, psychological tendencies
+BODY AND ENERGY: physical health, energy levels, sleep, exercise, physical sensations
+SIGNIFICANT RELATIONSHIPS: family, partners, friendships — names and dynamics
+SOCIAL CONNECTION: community, belonging, social patterns, isolation or connection
+INTERESTS AND PASSIONS: hobbies, creative pursuits, what energizes them
+WORK: occupation, professional identity, work satisfaction, career
+PURPOSE: sense of meaning, what the guest feels called to do
+ASPIRATIONS: future vision, goals, dreams, what they are moving toward
+CURRENT CHAPTER: what is happening right now, the dominant theme of this period
+STATED VALUES: what the guest says matters to them
+OBSERVED VALUES: values detected operating in behavior even when not named
+ENGINE OBSERVATIONS: behavioral patterns, drift, signals detected across sessions
+`;
+
+const [reflectionResponse, haikuResponse] = await Promise.all([
+
+    // ─── Sonnet — reflection generation ───
+    fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: [{
+                role: 'user',
+                content: `Here is the writing prompt that opened this session:\n\n${promptUsed || 'No prompt used'}\n\nHere is the guest's journal entry:\n\n${entry}`
+            }]
+        })
+    }),
+
+    // ─── Haiku — profile scan ───
+    fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 600,
+            messages: [{
+                role: 'user',
+                content: `You are the profile engine for Mirror, a private journaling tool. A guest has just submitted a journal entry. Your job is to scan it for three things and return structured JSON.
+
+JOURNAL ENTRY:
+${entry}
+
+FEELINGS LOGGED THIS SESSION:
+${historyContext ? historyContext.split('\n')[0] : 'Not provided'}
+
+CURRENT PROFILE STATE (what Mirror already knows):
+${personaContext ? personaContext.substring(0, 800) : 'Profile is empty — this is an early session'}
+
+PROFILE CATEGORIES:
+${categoryMap}
+
+KNOWN FAIR WINDS:
+${fairWindsContext || 'None established yet'}
+
+KNOWN UNDERTOWS (sensitive — internal only):
+${undertowsContext || 'None established yet'}
+
+YOUR THREE JOBS:
+
+JOB 1 — PROFILE POPULATION
+Extract any new factual or contextual information from the entry that belongs in a profile category. Only extract what is genuinely present — do not infer or assume. If nothing new is present, return an empty array.
+
+JOB 2 — GAP AUDIT
+Review the current profile state. Identify which categories are empty or sparse. Classify each gap:
+- category_1: genuinely unmapped, low risk, could be gently explored
+- category_2: conspicuously absent after many sessions, possibly protective, never use as aperture
+- category_3: disclosed once, not returned to, receive only, never initiate
+
+JOB 3 — BEHAVIORAL SIGNALS
+Scan the entry for:
+- Fair wind signals: topics producing energy, longer sentences, specificity, positive feeling clusters
+- Undertow language: cognitive distortions presenting as facts (permanence, pervasiveness, personalization, hopelessness, isolation, identity fusion)
+- Drift evidence: actions or thoughts that contradict a known undertow or confirm a known fair wind
+
+Return ONLY a JSON object. No preamble. No markdown. No backticks.
+
+{
+  "profile_updates": [
+    {
+      "category": "exact category name from the list above",
+      "name": "brief descriptive label for this data point",
+      "content": "the extracted information — specific, grounded in exact language from the entry",
+      "is_new": true
+    }
+  ],
+  "gap_audit": [
+    {
+      "category": "category name",
+      "gap_type": "category_1 or category_2 or category_3",
+      "approach": "light_oblique_curiosity or never_use_as_aperture or receive_only",
+      "sessions_empty": "approximate number if known"
+    }
+  ],
+  "behavioral_signals": [
+    {
+      "signal_type": "fair_wind_signal or undertow_language or drift_evidence",
+      "name": "brief label",
+      "content": "what was detected — specific language from the entry",
+      "confidence": "low or medium"
+    }
+  ]
+}`
+            }]
+        })
+    })
+]);
+
+// ─── Process reflection ───
+const reflectionData = await reflectionResponse.json();
+const reflection = reflectionData.content[0].text.trim().replace(/^[<>\s]+/, '');
+
+// ─── Process Haiku scan — fire writes immediately ───
+/*
+    Parse the Haiku response and write to guest_profile_v2.
+    Three write types — profile updates, gap flags stored
+    for prompt.js, behavioral signals.
+    All writes include claude_model and source fields
+    so the profile report shows exactly what built each row.
+*/
+let gapFlags = [];
+
+try {
+    const haikuData = await haikuResponse.json();
+    const haikuRaw = haikuData.content[0].text.trim();
+    const haikuCleaned = haikuRaw.replace(/```json|```/g, '').trim();
+    const haikuAnalysis = JSON.parse(haikuCleaned);
+
+    // Write profile updates
+    if (haikuAnalysis.profile_updates?.length > 0) {
+        const profileInserts = haikuAnalysis.profile_updates.map(update => ({
+            category: update.category,
+            name: `haiku_scan_profile_${update.name?.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
+            content: update.content,
+            source: 'haiku_entry_scan',
+            status: 'active',
+            confidence: 'medium',
+            claude_model: 'claude-haiku-4-5-20251001',
+            is_sensitive: update.category === 'Significant Relationships'
+        }));
+
+        await supabaseClient
+            .from('guest_profile_v2')
+            .insert(profileInserts);
+
+        console.log(`Haiku profile scan — wrote ${profileInserts.length} profile updates`);
+    }
+
+    // Store gap flags for prompt.js
+    // These are not written to the database —
+    // they are passed back in the response so
+    // the next prompt call can use them for
+    // aperture selection
+    if (haikuAnalysis.gap_audit?.length > 0) {
+        gapFlags = haikuAnalysis.gap_audit;
+        console.log(`Haiku gap audit — ${gapFlags.length} gaps classified`);
+    }
+
+    // Write behavioral signals
+    if (haikuAnalysis.behavioral_signals?.length > 0) {
+        const signalInserts = haikuAnalysis.behavioral_signals.map(signal => ({
+            category: 'Engine Observations',
+            name: `haiku_scan_${signal.signal_type}_${signal.name?.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
+            content: signal.content,
+            source: 'haiku_entry_scan',
+            status: 'active',
+            confidence: signal.confidence || 'medium',
+            claude_model: 'claude-haiku-4-5-20251001',
+            is_sensitive: signal.signal_type === 'undertow_language'
+        }));
+
+        await supabaseClient
+            .from('guest_profile_v2')
+            .insert(signalInserts);
+
+        console.log(`Haiku behavioral scan — wrote ${signalInserts.length} signals`);
+    }
+
+} catch (haikuError) {
+    // Haiku failure never affects the reflection
+    // The guest always gets their reflection
+    console.error('Haiku scan error:', haikuError.message);
+}
 
         let sessionRowId = rowId;
 
