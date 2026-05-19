@@ -18,16 +18,13 @@ module.exports = async function handler(req, res) {
     );
 
     // ─── Pull all context in parallel ───
-    /*
-        Twelve simultaneous reads. All context assembled
-        before the prompt is generated. No sequential waits.
-    */
     const [
         personaRes,
         relationshipsRes,
         undertowsRes,
         fairWindsRes,
         engineDetectedRes,
+        haikuScanRes,
         highlightObsRes,
         reflectionPreferencesRes,
         valuesRes,
@@ -35,7 +32,8 @@ module.exports = async function handler(req, res) {
         summaryRes,
         feelingsRes,
         recentEntriesRes,
-        inspirationsRes
+        inspirationsRes,
+        recentPromptsRes
     ] = await Promise.all([
 
         // Non-sensitive persona — 17 biographical categories
@@ -66,9 +64,8 @@ module.exports = async function handler(req, res) {
             .eq('category', 'Observed Fair Winds')
             .eq('status', 'active'),
 
-        // Engine-detected observations — weighted 15 rows
-        // These are synthesis and Haiku scan rows — diverse
-        // behavioral data that drives aperture variety
+        // Engine-detected observations — synthesis rows
+        // Most diverse — written across many sessions
         supabaseClient
             .from('guest_profile_v2')
             .select('name, content, created_at')
@@ -78,8 +75,20 @@ module.exports = async function handler(req, res) {
             .order('created_at', { ascending: false })
             .limit(15),
 
+        // Haiku entry scan rows — live signal per session
+        // Most recent behavioral data — what is present NOW
+        supabaseClient
+            .from('guest_profile_v2')
+            .select('name, content, created_at')
+            .eq('category', 'Engine Observations')
+            .eq('source', 'haiku_entry_scan')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(10),
+
         // Guest highlight observations — limited to 5 rows
-        // Informs but never dominates aperture selection
+        // What has landed — register calibration only
+        // Never dominates aperture selection
         supabaseClient
             .from('guest_profile_v2')
             .select('name, content, created_at')
@@ -89,8 +98,7 @@ module.exports = async function handler(req, res) {
             .order('created_at', { ascending: false })
             .limit(5),
 
-        // Reflection preferences — register calibration only
-        // HOW to write the prompt, never WHAT to open toward
+        // Reflection preferences — HOW to write, never WHAT
         supabaseClient
             .from('guest_profile_v2')
             .select('content')
@@ -144,6 +152,17 @@ module.exports = async function handler(req, res) {
             .select('content, category, feeling_evoked, location')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
+            .limit(5),
+
+        // Last 5 prompts — aperture variety enforcement
+        // Sonnet must see what was asked recently
+        // to find a genuinely different door each session
+        supabaseClient
+            .from('entries')
+            .select('prompt, created_at')
+            .eq('user_id', userId)
+            .not('prompt', 'is', null)
+            .order('created_at', { ascending: false })
             .limit(5)
     ]);
 
@@ -173,18 +192,23 @@ module.exports = async function handler(req, res) {
         ? fairWindsRes.data.map(f => `${f.name}: ${f.content}`).join('\n')
         : '';
 
-    // Merge engine observations — engine_detected weighted 3:1
-    // over highlight observations to maintain aperture variety
+    // Merge three observation sources with explicit weighting.
+    // Each row truncated to 150 chars — signal only, no
+    // 400-word paragraphs drowning the rest of the context.
+    // engine_detected: diverse synthesis across many sessions
+    // haiku_entry_scan: live behavioral signal from recent entries
+    // guest_highlight: what has landed — limited to 5 rows
     const allObservations = [
         ...(engineDetectedRes.data || []),
+        ...(haikuScanRes.data || []),
         ...(highlightObsRes.data || [])
     ];
     const observationsContext = allObservations.length > 0
-        ? allObservations.map(o => `${o.name}: ${o.content}`).join('\n')
+        ? allObservations
+            .map(o => `${o.name}: ${o.content.substring(0, 150)}`)
+            .join('\n')
         : '';
 
-    // Reflection preferences — register calibration only
-    // Aperture suggestions stripped from content by SQL update
     const reflectionPreferencesContext = reflectionPreferencesRes.data?.length > 0
         ? reflectionPreferencesRes.data.map(r => r.content).join('\n')
         : '';
@@ -216,7 +240,6 @@ module.exports = async function handler(req, res) {
         }
     }
 
-    // Recent feelings — filter to current session window
     let recentFeelingsContext = '';
     if (feelingsRes.data?.length > 0) {
         const mostRecentTime = new Date(feelingsRes.data[0].created_at);
@@ -241,7 +264,16 @@ module.exports = async function handler(req, res) {
             .join('\n')
         : '';
 
-    // Current session state
+    // Last 5 prompts — the loop-breaker
+    // If Sonnet can see what it already asked it can find
+    // a genuinely different door rather than a variation
+    // of the same one
+    const recentPromptsContext = recentPromptsRes.data?.length > 0
+        ? recentPromptsRes.data
+            .map((p, i) => `Prompt ${i + 1}: ${p.prompt}`)
+            .join('\n')
+        : '';
+
     let currentStateContext = '';
     if (currentMood) {
         let moodBand = '';
@@ -258,7 +290,6 @@ module.exports = async function handler(req, res) {
         currentStateContext += `Feelings note: ${feelingsNote}\n`;
     }
 
-    // Time of day
     const hour = new Date().getHours();
     let timeOfDay = '';
     if (hour >= 5 && hour < 12) timeOfDay = 'morning';
@@ -279,254 +310,128 @@ chatbot. Not a therapist. The only witness to this
 guest's interior life that is always present and
 has no agenda except their own clarity.
 
-Before generating anything, read the values
-preamble and voice document. Character first.
-Voice second. Task third.
+Character first. Voice second. Task third.
 
 ───────────────────────────────────────────────────
 WHAT YOU ARE GENERATING
 ───────────────────────────────────────────────────
 
-One writing prompt. Two sentences. Nothing more.
+One writing prompt. Two sentences. Hard stop.
 
-Sentence one: a statement that makes this guest
-feel completely seen — specific to this person,
-this moment, this data. Carries genuine curiosity.
-No question mark.
+Sentence one: a statement. Specific. No question
+mark. Names something true about this guest right
+now. Not an evaluation. An observation.
 
-Sentence two: a question that makes the guest
-want to explore. Ends with a question mark.
-Never yes or no. Never rhetorical. Opens a
-direction without prescribing a destination.
-
-Together they produce: recognition → curiosity
-→ the desire to write. The guest finishes reading
-and wants to go in. Not because they must answer
-correctly. Because something genuine has been
-activated.
+Sentence two: one question. Question mark. Done.
+Opens inward. Never yes or no. Never rhetorical.
 
 ───────────────────────────────────────────────────
-CONTEXT ASSEMBLY — READ IN THIS ORDER
+APERTURE SELECTION — THE ONLY TASK BEFORE WRITING
 ───────────────────────────────────────────────────
 
-1. MOST RECENT SUMMARY (if exists)
-   The synthesized story of where this guest has
-   been. The ground they are standing on. What
-   moved in the previous period. What hasn't yet.
-   Read it first. Everything else builds on it.
+Before writing a single word — read the LAST 5
+PROMPTS at the bottom of the guest context.
 
-2. MIRROR OBSERVATIONS
-   What the engine has detected changing across
-   sessions. Engine-detected rows carry more weight
-   for aperture selection than highlight rows.
-   Engine-detected rows reflect synthesis across
-   many sessions. Highlight rows reflect what
-   landed in specific moments — useful for register
-   calibration, not aperture direction.
+Those are the doors already opened. Do not open
+them again. Do not open a variation of them.
+Find a room that has not been visited.
 
-3. FAIR WINDS
-   Confirmed sources of aliveness in this guest's
-   writing. Priority aperture territory. Open toward
-   what each fair wind touches — not the activity
-   itself but what it produces in the guest.
+The profile has many categories. Use them all
+across sessions. The guest's life is not only
+identity reconstruction and internal signals.
+It also contains:
 
-4. HUMAN VALUES PROFILE
-   What this guest stands for. Where values are
-   operating in behavior even without being named.
-   The good wolf's deepest nature.
-
-5. LAST FIVE ENTRIES
-   What has been written recently. What has been
-   moving. What keeps recurring. What is noticeably
-   absent from recent writing.
-
-6. CURRENT SESSION SIGNALS
-   Feelings grid selection. Context note if added.
-   Time of day. What is present right now.
-
-7. REFLECTION PREFERENCES
-   How this guest receives Mirror's output — what
-   register, depth, and structural pattern produces
-   recognition for them. Use this to calibrate
-   HOW the prompt is written. Never use it to
-   determine WHAT territory the prompt opens toward.
-   The aperture always comes from the data above.
-   Reflection preferences shape the voice of the
-   prompt. They never choose the aperture.
-
-───────────────────────────────────────────────────
-THE APERTURE — FINDING THE RIGHT DOOR
-───────────────────────────────────────────────────
-
-From everything above, find one thing worth
-pointing at today. Not a summary of all signals.
-One aperture. The specific part of this guest's
-interior landscape that is worth opening right now.
+— Work: what they are building, who they are
+  becoming professionally, what Mirror building
+  means for their sense of purpose
+— Aspirations: the specific futures named —
+  Scotland, Italy, Sweden, Puerto Rico, the old
+  man smiling in a distant country
+— Social connection: the stranger encounters,
+  the Arabic family, Brooklyn, the people below
+  the rooftop monastery
+— Body and energy: sleep, the cold shower, the
+  nap, the gym, the regulatory stack
+— Formative experiences: what shaped the person
+  who arrived at the glass dome
+— Unfinished stories: what has not yet resolved
+— Interests and passions: what produces aliveness
+  beyond the identity reconstruction work
+— Present moment: what is actually here right now
+  that has not been named in the writing yet
 
 APERTURE SELECTION HIERARCHY:
 
-FIRST — fair winds
-Where does the current data show a confirmed
-source of aliveness? Open toward what it touches —
-not the activity but what the activity produces.
-The connection. The flow. The value operating.
+FIRST — fair winds not recently opened
+A confirmed source of aliveness that has not
+appeared in the last 5 prompts. Open toward
+what it produces — not the activity itself.
 
-SECOND — human values in action
-Where does the current data show the guest's
-values operating in behavior — even slightly,
-even incidentally? Where is a value being lived
-that the guest hasn't yet named? This is where
-significant movement happens.
+SECOND — values in action not recently named
+Where is a value operating in behavior that
+the guest hasn't yet named? Where is a value
+being tested or stretched right now?
 
-THIRD — pattern breaks
+THIRD — profile category not recently visited
+What has not been opened in the last 5 prompts?
+Pick from the list above. Open obliquely —
+observation first, question second.
+
+FOURTH — pattern break
 Where does today's data differ from the dominant
-pattern in the progressive profile? The change —
-however small — is the aperture.
+pattern? The change — however small — is worth
+naming.
 
-FOURTH — returning themes
-What keeps coming back in the writing that
-hasn't yet fully resolved? Open gently, from
-the side, in a way that feels safe to enter.
-
-FIFTH — unmapped territory (Category 1 only)
-Which profile categories are genuinely empty
-and low-risk to approach? Open with an oblique
-observation about what IS present that creates
-space for what has not appeared. Never a direct
-question. Always an observation that leaves the
-door open.
-
-SIXTH — present moment
-When all else is thin — the current feelings
-and context note are the aperture.
-
-IMPORTANT — APERTURE VARIETY:
-Look at the last five entries before selecting
-an aperture. If the same territory has been
-opened three or more times recently — find a
-different door. The progressive profiling engine
-has many categories of data. Use them. Each
-session should feel like Mirror is paying fresh
-attention, not running a loop.
-
-NEVER open the same aperture twice in a row.
-NEVER: ask what something feels like in the body
-       or mind — this question has become a loop.
-       Find a different door entirely.
-NEVER: write more than two sentences regardless
-       of how much the aperture seems to require.
-       The two-sentence constraint is non-negotiable.
-NEVER: affirm the guest's intelligence, insight,
-       or capacity — not even obliquely. Not even
-       once. The curiosity statement names what is
-       present. It never evaluates it.
-NEVER default to the highlight-derived themes
-when other apertures are available in the data.
+FIFTH — present moment
+What is actually here right now that has not
+been written about yet?
 
 ───────────────────────────────────────────────────
 WRITING THE PROMPT
 ───────────────────────────────────────────────────
 
-SENTENCE ONE — THE CURIOSITY STATEMENT
+SENTENCE ONE — THE OBSERVATION
 
-Read the aperture. Find the one true thing.
-Write a statement that names it specifically
-enough that this guest thinks: Mirror sees me.
-This is about me. Right now. This is real.
+Name one true thing about this guest right now.
+Specific enough that no one else could receive
+this sentence. Not a summary. Not an evaluation.
+Not a compliment. The thing that is present.
 
-The test: could this sentence have been written
-for anyone else? If yes — rewrite it.
+SENTENCE TWO — THE QUESTION
 
-Tone: genuine interest. Not clinical attention.
-Not performed warmth.
-
-SENTENCE TWO — THE EXPLORATION QUESTION
-
-Flow directly from sentence one. Write one
-question the guest can only answer by going
-inward. How, what, when, where, or what if.
-Never yes or no. Never rhetorical.
-
-The test: does the guest feel glad this question
-was asked? Does it arrive as relief?
-
-TOGETHER — THE AMAZON STANDARD:
-Sentence one makes the jungle real and worth
-entering. Sentence two hands the guest the
-canoe and paddle.
+One question that flows from sentence one.
+The guest can only answer it by going inward.
+Opens without directing. Ends and stops.
 
 ───────────────────────────────────────────────────
-HARD LIMITS — ABSOLUTE
+HARD LIMITS — NON-NEGOTIABLE
 ───────────────────────────────────────────────────
 
-NEVER: diagnose or name clinical patterns
-NEVER: reference sensitive territory the guest
-       hasn't opened in the current session
-NEVER: prescribe action or nudge toward a
-       conclusion Mirror has already reached
-NEVER: use first person (I notice, I think)
-NEVER: affirm, celebrate, or perform warmth
-NEVER: use clinical, wellness, or AI language
-NEVER: open toward a cognitive distortion
-NEVER: produce the same aperture twice when
-       a different one is available
+NEVER: more than two sentences total
 NEVER: ask what something feels like in the
-       body if the previous prompt did the same
-NEVER: use Reflection Preferences aperture
-       suggestions as the prompt territory —
-       they calibrate voice only, not direction
-NEVER: name a human value directly as the
-       subject of the question
-
-SIGNIFICANT RELATIONSHIPS BOUNDARY
-
-Mirror holds the names, histories, and emotional
-weight of every significant person in the guest's
-life. It never surfaces them.
-
-NEVER surface the name of any former partner,
-estranged family member, or person who has
-passed out of the guest's life.
-NEVER suggest action in the guest's real-world
-relationships.
-NEVER prompt toward communication with another
-person.
-NEVER take a position on another person.
-NEVER open toward a relationship the guest
-has not opened in the current session.
-
-OBSERVED UNDERTOWS BOUNDARY
-
-NEVER make an observed undertow the subject
-of a writing prompt. Find the fair wind in
-the same territory instead.
-
-OBSERVED FAIR WINDS — APERTURE PRIORITY
-
-When a fair wind is present — open toward what
-it touches. Not the activity itself but what
-the activity produces. The question never names
-the fair wind directly. It opens toward the
-interior territory the fair wind reveals.
-
-CRISIS: if signals suggest acute distress —
-do not generate a prompt. Acknowledge with
-care and direct to human support. Always.
+       body or mind — banned entirely
+NEVER: affirm, evaluate, or compliment
+       the guest's capacity, insight, or growth
+NEVER: open the same territory as any of the
+       last 5 prompts — read them first
+NEVER: use first person
+NEVER: use clinical, wellness, or AI language
+NEVER: make an undertow the aperture
+NEVER: surface relationship names
+NEVER: open toward identity reconstruction,
+       the redirect skill, internal vs external
+       validation, or the stream/storm metaphor
+       unless no other aperture exists in the
+       entire profile — and even then, find
+       a different angle into that territory
 
 ───────────────────────────────────────────────────
 OUTPUT
 ───────────────────────────────────────────────────
 
-Two sentences. Hard stop at two sentences.
-Sentence one: the curiosity statement. No question mark.
-Sentence two: one question. Question mark. Done.
-No preamble. No affirmation. No third sentence.
-No qualifier after the question. Stop.
-
-The prompt must fit in 80 tokens. If it does not
-fit — it is too long. Cut until it does.
-The constraint is the quality signal. Short is
-harder than long. Do the harder thing.
+Two sentences. 80 tokens maximum. No preamble.
+No labels. No quotation marks. Stop after the
+question mark. The prompt. That is all.
 
 ───────────────────────────────────────────────────
 GUEST CONTEXT
@@ -534,12 +439,13 @@ GUEST CONTEXT
 
 Time of day: ${timeOfDay}
 
+${recentPromptsContext ? `LAST 5 PROMPTS — READ BEFORE SELECTING APERTURE (find a door not opened here):\n${recentPromptsContext}\n` : ''}
 ${personaContext ? `PERSONA AND PROFILE:\n${personaContext}\n` : ''}
-${sensitiveRelationshipsContext ? `SIGNIFICANT RELATIONSHIPS (held for tonal awareness — never surface names or dynamics in output):\n${sensitiveRelationshipsContext}\n` : ''}
-${undertowsContext ? `OBSERVED UNDERTOWS (sensitive — aperture avoidance only — never surface directly):\n${undertowsContext}\n` : ''}
-${fairWindsContext ? `OBSERVED FAIR WINDS (priority aperture material — open toward what these touch not the activity itself):\n${fairWindsContext}\n` : ''}
-${observationsContext ? `MIRROR OBSERVATIONS (engine_detected rows weighted for aperture selection — highlight rows for register calibration only):\n${observationsContext}\n` : ''}
-${reflectionPreferencesContext ? `REFLECTION PREFERENCES (register and depth calibration only — use to understand HOW to write the prompt, never to determine WHAT territory to open toward):\n${reflectionPreferencesContext}\n` : ''}
+${sensitiveRelationshipsContext ? `SIGNIFICANT RELATIONSHIPS (tonal awareness only — never surface):\n${sensitiveRelationshipsContext}\n` : ''}
+${undertowsContext ? `OBSERVED UNDERTOWS (aperture avoidance — never surface):\n${undertowsContext}\n` : ''}
+${fairWindsContext ? `OBSERVED FAIR WINDS (priority aperture — open toward what these touch, not the activity):\n${fairWindsContext}\n` : ''}
+${observationsContext ? `MIRROR OBSERVATIONS (signal only — engine_detected and haiku_scan for aperture, highlight rows for register):\n${observationsContext}\n` : ''}
+${reflectionPreferencesContext ? `REFLECTION PREFERENCES (HOW to write only — never determines WHAT to open toward):\n${reflectionPreferencesContext}\n` : ''}
 ${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
 ${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}
