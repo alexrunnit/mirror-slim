@@ -205,7 +205,7 @@ module.exports = async function handler(req, res) {
     ];
     const observationsContext = allObservations.length > 0
         ? allObservations
-            .map(o => `${o.name}: ${o.content.substring(0, 150)}`)
+            .map(o => `${o.name}: ${o.content.substring(0, 300)}`)
             .join('\n')
         : '';
 
@@ -424,6 +424,17 @@ NEVER: open toward identity reconstruction,
        unless no other aperture exists in the
        entire profile — and even then, find
        a different angle into that territory
+       NEVER: use the feelings note as the aperture —
+       it tells Mirror what register the guest
+       is in, not what to ask about. The aperture
+       always comes from the profile data, the
+       fair winds, the values, or the history.
+       A prompt that restates the feelings note
+       is not a prompt. It is an echo.
+NEVER: open a prompt with "Your uncertainty" or
+       any direct reference to a feeling the
+       guest just named — that is the feelings
+       note talking, not the profile.
 
 ───────────────────────────────────────────────────
 OUTPUT
@@ -449,7 +460,7 @@ ${reflectionPreferencesContext ? `REFLECTION PREFERENCES (HOW to write only — 
 ${humanValuesContext ? `HUMAN VALUES:\n${humanValuesContext}\n` : ''}
 ${summaryContext ? `MOST RECENT SUMMARY:\n${summaryContext}\n` : ''}
 ${currentStateContext ? `CURRENT STATE:\n${currentStateContext}` : ''}
-${recentFeelingsContext ? `${recentFeelingsContext}\n` : ''}
+${recentFeelingsContext ? `CURRENT EMOTIONAL REGISTER (tonal awareness only — calibrates how Mirror speaks, never what it opens toward — the feelings note is not aperture material):\n${recentFeelingsContext}\n` : ''}
 ${inspirationContext ? `RECENT INSPIRATIONS:\n${inspirationContext}\n` : ''}
 ${historyContext ? `LAST FIVE ENTRIES:\n${historyContext}` : ''}`;
 
