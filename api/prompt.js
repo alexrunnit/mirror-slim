@@ -410,9 +410,16 @@ session should feel like Mirror is paying fresh
 attention, not running a loop.
 
 NEVER open the same aperture twice in a row.
-NEVER generate a prompt that asks the guest
-what something feels like in their body if
-the previous prompt did the same.
+NEVER: ask what something feels like in the body
+       or mind — this question has become a loop.
+       Find a different door entirely.
+NEVER: write more than two sentences regardless
+       of how much the aperture seems to require.
+       The two-sentence constraint is non-negotiable.
+NEVER: affirm the guest's intelligence, insight,
+       or capacity — not even obliquely. Not even
+       once. The curiosity statement names what is
+       present. It never evaluates it.
 NEVER default to the highlight-derived themes
 when other apertures are available in the data.
 
@@ -510,9 +517,16 @@ care and direct to human support. Always.
 OUTPUT
 ───────────────────────────────────────────────────
 
-Two sentences. No preamble. No explanation.
-No labels. No quotation marks. No formatting.
-The prompt. That is all.
+Two sentences. Hard stop at two sentences.
+Sentence one: the curiosity statement. No question mark.
+Sentence two: one question. Question mark. Done.
+No preamble. No affirmation. No third sentence.
+No qualifier after the question. Stop.
+
+The prompt must fit in 80 tokens. If it does not
+fit — it is too long. Cut until it does.
+The constraint is the quality signal. Short is
+harder than long. Do the harder thing.
 
 ───────────────────────────────────────────────────
 GUEST CONTEXT
@@ -543,7 +557,7 @@ ${historyContext ? `LAST FIVE ENTRIES:\n${historyContext}` : ''}`;
             },
             body: JSON.stringify({
                 model: 'claude-sonnet-4-20250514',
-                max_tokens: 150,
+                max_tokens: 80,
                 system: promptSystem,
                 messages: [{
                     role: 'user',
